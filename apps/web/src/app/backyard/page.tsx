@@ -187,7 +187,10 @@ function BackyardPageContent() {
                           {item.menuName} x {item.quantity}
                         </span>
                         <span className="text-muted-foreground">
-                          ¥{((item.menuPrice ?? 0) * item.quantity).toLocaleString()}
+                          ¥
+                          {(
+                            (item.menuPrice ?? 0) * item.quantity
+                          ).toLocaleString()}
                         </span>
                       </div>
 

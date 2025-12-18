@@ -20,7 +20,11 @@ async function generateOrderNumber(circleId: string): Promise<string> {
   const now = new Date();
   const jstOffset = 9 * 60 * 60 * 1000; // JST is UTC+9
   const jstNow = new Date(now.getTime() + jstOffset);
-  const todayJST = new Date(jstNow.getFullYear(), jstNow.getMonth(), jstNow.getDate());
+  const todayJST = new Date(
+    jstNow.getFullYear(),
+    jstNow.getMonth(),
+    jstNow.getDate()
+  );
   const todayUTC = new Date(todayJST.getTime() - jstOffset);
 
   const todayOrders = await db
@@ -35,8 +39,13 @@ async function generateOrderNumber(circleId: string): Promise<string> {
 
   const nextNumber = todayOrders.length + 1;
   // サークルID先頭4文字 + 日付 + 連番で一意性を確保
-  const dateStr = `${(jstNow.getMonth() + 1).toString().padStart(2, "0")}${jstNow.getDate().toString().padStart(2, "0")}`;
-  return `${circleId.slice(0, 4)}-${dateStr}-${String(nextNumber).padStart(3, "0")}`;
+  const dateStr = `${(jstNow.getMonth() + 1)
+    .toString()
+    .padStart(2, "0")}${jstNow.getDate().toString().padStart(2, "0")}`;
+  return `${circleId.slice(0, 4)}-${dateStr}-${String(nextNumber).padStart(
+    3,
+    "0"
+  )}`;
 }
 
 // 注文一覧取得
@@ -187,7 +196,10 @@ orderRoutes.post(
 
       // メニューの価格を取得
       const menuIds = input.items.map((i) => i.menuId);
-      const menus = await db.select().from(menu).where(inArray(menu.id, menuIds));
+      const menus = await db
+        .select()
+        .from(menu)
+        .where(inArray(menu.id, menuIds));
 
       // トッピングの価格を取得
       const allToppingIds = input.items.flatMap((i) => i.toppingIds || []);
@@ -284,7 +296,10 @@ orderRoutes.post(
     } catch (error) {
       console.error("Order creation error:", error);
       return c.json(
-        { error: error instanceof Error ? error.message : "注文の作成に失敗しました" },
+        {
+          error:
+            error instanceof Error ? error.message : "注文の作成に失敗しました",
+        },
         500
       );
     }
