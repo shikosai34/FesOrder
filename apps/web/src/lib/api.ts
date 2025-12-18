@@ -28,7 +28,9 @@ async function fetchApi<T>(
   const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Unknown error" }));
+    const error = await response
+      .json()
+      .catch(() => ({ error: "Unknown error" }));
     throw new Error(error.error || `HTTP error! status: ${response.status}`);
   }
 
@@ -44,7 +46,10 @@ export const eventApi = {
   delete: (id: string) =>
     fetchApi<{ success: boolean }>(`/api/events/${id}`, { method: "DELETE" }),
   login: (data: LoginInput) =>
-    fetchApi<LoginResponse>("/api/events/login", { method: "POST", body: data }),
+    fetchApi<LoginResponse>("/api/events/login", {
+      method: "POST",
+      body: data,
+    }),
 };
 
 // Circle API
@@ -179,7 +184,10 @@ export const membershipApi = {
       body: data,
     }),
   addMember: (data: AddMemberInput) =>
-    fetchApi<{ id: string }>("/api/memberships", { method: "POST", body: data }),
+    fetchApi<{ id: string }>("/api/memberships", {
+      method: "POST",
+      body: data,
+    }),
   updateRole: (id: string, role: Role) =>
     fetchApi<{ success: boolean }>(`/api/memberships/${id}/role`, {
       method: "PATCH",
@@ -207,8 +215,8 @@ export const membershipApi = {
     const params = circleId
       ? `circleId=${circleId}`
       : eventId
-        ? `eventId=${eventId}`
-        : "";
+      ? `eventId=${eventId}`
+      : "";
     return fetchApi<InviteToken[]>(`/api/memberships/invite/list?${params}`);
   },
   deleteInvite: (id: string) =>
@@ -228,7 +236,9 @@ export const membershipApi = {
 };
 
 // 画像アップロード
-export const uploadImage = async (file: File): Promise<{ path: string; fileName: string }> => {
+export const uploadImage = async (
+  file: File
+): Promise<{ path: string; fileName: string }> => {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -239,7 +249,9 @@ export const uploadImage = async (file: File): Promise<{ path: string; fileName:
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Unknown error" }));
+    const error = await response
+      .json()
+      .catch(() => ({ error: "Unknown error" }));
     throw new Error(error.error || "アップロードに失敗しました");
   }
 
@@ -298,7 +310,12 @@ export interface Staff {
   updatedAt: Date;
 }
 
-export type OrderStatus = "pending" | "preparing" | "ready" | "completed" | "cancelled";
+export type OrderStatus =
+  | "pending"
+  | "preparing"
+  | "ready"
+  | "completed"
+  | "cancelled";
 
 export interface Order {
   id: string;
@@ -342,7 +359,14 @@ export interface SalesStats {
   averageOrderValue: number;
 }
 
-export type Role = "owner" | "admin" | "manager" | "cashier" | "kitchen" | "server" | "viewer";
+export type Role =
+  | "owner"
+  | "admin"
+  | "manager"
+  | "cashier"
+  | "kitchen"
+  | "server"
+  | "viewer";
 
 export interface RoleInfo {
   role: Role;

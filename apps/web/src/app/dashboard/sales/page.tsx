@@ -31,7 +31,8 @@ function SalesManagementContent() {
 
   const totalSales =
     orders?.reduce((sum, order) => sum + (order.totalAmount || 0), 0) || 0;
-  const completedOrders = orders?.filter((order) => order.status === "completed") || [];
+  const completedOrders =
+    orders?.filter((order) => order.status === "completed") || [];
   const completedSales = completedOrders.reduce(
     (sum, order) => sum + (order.totalAmount || 0),
     0

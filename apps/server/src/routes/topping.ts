@@ -85,7 +85,8 @@ toppingRoutes.put(
 
     if (input.name !== undefined) updates.name = input.name;
     if (input.price !== undefined) updates.price = input.price;
-    if (input.description !== undefined) updates.description = input.description;
+    if (input.description !== undefined)
+      updates.description = input.description;
     if (input.soldOut !== undefined) updates.soldOut = input.soldOut;
 
     await db.update(topping).set(updates).where(eq(topping.id, id));

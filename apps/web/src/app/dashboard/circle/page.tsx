@@ -52,7 +52,11 @@ function CircleSettingsContent() {
   }, [circle]);
 
   const updateCircle = useMutation({
-    mutationFn: async (input: { id: string; name?: string; description?: string }) => {
+    mutationFn: async (input: {
+      id: string;
+      name?: string;
+      description?: string;
+    }) => {
       const { id, ...data } = input;
       return await circleApi.update(id, data);
     },

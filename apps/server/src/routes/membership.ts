@@ -347,8 +347,8 @@ membershipRoutes.post(
           foundToken.circleId
             ? eq(membership.circleId, foundToken.circleId)
             : foundToken.eventId
-              ? eq(membership.eventId, foundToken.eventId)
-              : undefined
+            ? eq(membership.eventId, foundToken.eventId)
+            : undefined
         )
       );
 
@@ -499,7 +499,10 @@ membershipRoutes.patch(
 
     const pinHash = await bcrypt.hash(input.pin, 10);
 
-    await db.update(membership).set({ pin: pinHash }).where(eq(membership.id, id));
+    await db
+      .update(membership)
+      .set({ pin: pinHash })
+      .where(eq(membership.id, id));
 
     return c.json({ success: true });
   }

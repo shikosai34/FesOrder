@@ -44,7 +44,10 @@ function BackyardPageContent() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async (input: { id: string; status: "pending" | "preparing" | "ready" | "completed" | "cancelled" }) => {
+    mutationFn: async (input: {
+      id: string;
+      status: "pending" | "preparing" | "ready" | "completed" | "cancelled";
+    }) => {
       return await orderApi.updateStatus(input.id, input.status);
     },
     onSuccess: () => {
@@ -189,25 +192,24 @@ function BackyardPageContent() {
                       </div>
 
                       {/* トッピング */}
-                      {item.toppings &&
-                        item.toppings.length > 0 && (
-                          <div className="pl-4 space-y-1">
-                            {item.toppings.map((topping) => (
-                              <div
-                                key={topping.id}
-                                className="flex justify-between text-sm text-muted-foreground"
-                              >
-                                <span>+ {topping.toppingName}</span>
-                                <span>
-                                  ¥
-                                  {(
-                                    topping.price * item.quantity
-                                  ).toLocaleString()}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                      {item.toppings && item.toppings.length > 0 && (
+                        <div className="pl-4 space-y-1">
+                          {item.toppings.map((topping) => (
+                            <div
+                              key={topping.id}
+                              className="flex justify-between text-sm text-muted-foreground"
+                            >
+                              <span>+ {topping.toppingName}</span>
+                              <span>
+                                ¥
+                                {(
+                                  topping.price * item.quantity
+                                ).toLocaleString()}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

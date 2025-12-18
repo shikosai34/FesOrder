@@ -69,10 +69,7 @@ function StaffManagementContent() {
 
   // スタッフ作成
   const createStaff = useMutation({
-    mutationFn: async (input: {
-      circleId: string;
-      name: string;
-    }) => {
+    mutationFn: async (input: { circleId: string; name: string }) => {
       return await staffApi.create(input);
     },
     onSuccess: () => {
@@ -87,10 +84,7 @@ function StaffManagementContent() {
 
   // スタッフ更新
   const updateStaff = useMutation({
-    mutationFn: async (input: {
-      id: string;
-      name?: string;
-    }) => {
+    mutationFn: async (input: { id: string; name?: string }) => {
       const { id, ...data } = input;
       return await staffApi.update(id, data);
     },

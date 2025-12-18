@@ -56,7 +56,8 @@ function StockManagementContent() {
     updateStock.mutate({ id: menuId, stock: newStock });
   };
 
-  const lowStockItems = menus?.filter((menu) => (menu.stockQuantity ?? 0) < 10) || [];
+  const lowStockItems =
+    menus?.filter((menu) => (menu.stockQuantity ?? 0) < 10) || [];
 
   if (isLoading) {
     return (
@@ -122,7 +123,9 @@ function StockManagementContent() {
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-muted">
-                      <span className="text-xs text-muted-foreground">No Image</span>
+                      <span className="text-xs text-muted-foreground">
+                        No Image
+                      </span>
                     </div>
                   )}
                 </div>

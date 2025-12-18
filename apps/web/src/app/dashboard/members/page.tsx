@@ -83,7 +83,13 @@ function MembersContent() {
     onSuccess: () => {
       refetchMembers();
       setShowAddForm(false);
-      setNewMember({ userId: "", userEmail: "", userName: "", role: "viewer", pin: "" });
+      setNewMember({
+        userId: "",
+        userEmail: "",
+        userName: "",
+        role: "viewer",
+        pin: "",
+      });
     },
   });
 
@@ -486,7 +492,10 @@ function MembersContent() {
           <div className="grid gap-4 md:grid-cols-2">
             {rolesData &&
               rolesData.map((roleInfo) => (
-                <div key={roleInfo.role} className="p-4 rounded-lg border space-y-2">
+                <div
+                  key={roleInfo.role}
+                  className="p-4 rounded-lg border space-y-2"
+                >
                   <div className="flex items-center gap-2">
                     <Badge variant={getRoleBadgeVariant(roleInfo.role)}>
                       {ROLE_NAMES[roleInfo.role as RoleType] || roleInfo.role}
