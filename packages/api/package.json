@@ -23,6 +23,10 @@
     "dotenv": "catalog:",
     "zod": "catalog:",
     "@new-modern-app/auth": "workspace:*",
-    "@new-modern-app/db": "workspace:*"
+    "@new-modern-app/db": "workspace:*",
+    "nanoid": "^5.0.9",
+    "bcryptjs": "^2.4.3",
+    "@types/bcryptjs": "^2.4.6",
+    "drizzle-orm": "^0.45.0"
   }
 }

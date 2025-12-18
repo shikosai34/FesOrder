@@ -7,10 +7,33 @@ node_modules
 dist
 build
 *.tsbuildinfo
+.next
+out
 
 # Environment variables
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .env*.local
+!.env.example
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+drizzle/*.sql
+!drizzle/migrations/*.sql
+
+# Uploaded files
+uploads/
+!uploads/.gitkeep
+public/uploads/
+!public/uploads/.gitkeep
 
 # IDEs and editors
 .vscode/*
@@ -48,3 +71,19 @@ coverage
 .cache
 tmp
 temp
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Secret keys
+*.pem
+*.key
+*.crt
+*.p12
+
+# Backup files
+*.bak
+*.backup
+*~

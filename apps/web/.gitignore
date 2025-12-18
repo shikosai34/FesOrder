@@ -22,6 +22,10 @@
 .tanstack/
 .nitro/
 
+# Uploaded files (keep .gitkeep)
+/public/uploads/*
+!/public/uploads/.gitkeep
+
 # Deployment
 .vercel
 .netlify
