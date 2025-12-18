@@ -187,7 +187,7 @@ function BackyardPageContent() {
                           {item.menuName} x {item.quantity}
                         </span>
                         <span className="text-muted-foreground">
-                          ¥{(item.unitPrice * item.quantity).toLocaleString()}
+                          ¥{((item.menuPrice ?? 0) * item.quantity).toLocaleString()}
                         </span>
                       </div>
 
@@ -218,7 +218,7 @@ function BackyardPageContent() {
                 <div className="border-t pt-3">
                   <div className="flex justify-between text-xl font-bold">
                     <span>合計</span>
-                    <span>¥{order.totalAmount.toLocaleString()}</span>
+                    <span>¥{(order.totalAmount ?? 0).toLocaleString()}</span>
                   </div>
                 </div>
               </CardContent>

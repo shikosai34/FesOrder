@@ -54,7 +54,7 @@ export default function Home() {
       {/* ヒーローセクション */}
       <section className="container mx-auto px-4 py-20 text-center">
         <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          茨香祭注文システム
+          学園祭注文システム
         </h1>
         <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
           学園祭での注文管理を、もっとスマートに、もっとスムーズに

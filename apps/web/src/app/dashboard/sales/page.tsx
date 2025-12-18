@@ -110,7 +110,7 @@ function SalesManagementContent() {
                 </div>
                 <div className="text-right">
                   <p className="font-bold">
-                    ¥{order.totalAmount.toLocaleString()}
+                    ¥{(order.totalAmount ?? 0).toLocaleString()}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {order.status}

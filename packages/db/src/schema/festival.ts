@@ -207,7 +207,7 @@ export const menuTopping = sqliteTable(
 
 // 注文テーブル
 export const order = sqliteTable(
-  "order",
+  "orders",
   {
     id: text("id").primaryKey(),
     circleId: text("circle_id")

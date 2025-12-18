@@ -14,10 +14,14 @@ import { nanoid } from "nanoid";
 
 const orderRoutes = new Hono();
 
-// 注文番号を生成（同じサークル内で日ごとに連番）
+// 注文番号を生成（サークル内で連番）
 async function generateOrderNumber(circleId: string): Promise<string> {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // 今日の日本時間の開始時刻を取得
+  const now = new Date();
+  const jstOffset = 9 * 60 * 60 * 1000; // JST is UTC+9
+  const jstNow = new Date(now.getTime() + jstOffset);
+  const todayJST = new Date(jstNow.getFullYear(), jstNow.getMonth(), jstNow.getDate());
+  const todayUTC = new Date(todayJST.getTime() - jstOffset);
 
   const todayOrders = await db
     .select({ orderNumber: order.orderNumber })
@@ -25,12 +29,14 @@ async function generateOrderNumber(circleId: string): Promise<string> {
     .where(
       and(
         eq(order.circleId, circleId),
-        sql`${order.createdAt} >= ${today.toISOString()}`
+        sql`${order.createdAt} >= ${todayUTC.getTime()}`
       )
     );
 
   const nextNumber = todayOrders.length + 1;
-  return String(nextNumber).padStart(3, "0");
+  // サークルID先頭4文字 + 日付 + 連番で一意性を確保
+  const dateStr = `${(jstNow.getMonth() + 1).toString().padStart(2, "0")}${jstNow.getDate().toString().padStart(2, "0")}`;
+  return `${circleId.slice(0, 4)}-${dateStr}-${String(nextNumber).padStart(3, "0")}`;
 }
 
 // 注文一覧取得
@@ -172,108 +178,116 @@ orderRoutes.post(
     })
   ),
   async (c) => {
-    const input = c.req.valid("json");
-    const orderId = nanoid();
+    try {
+      const input = c.req.valid("json");
+      const orderId = nanoid();
 
-    // 注文番号を生成
-    const orderNumber = await generateOrderNumber(input.circleId);
+      // 注文番号を生成
+      const orderNumber = await generateOrderNumber(input.circleId);
 
-    // メニューの価格を取得
-    const menuIds = input.items.map((i) => i.menuId);
-    const menus = await db.select().from(menu).where(inArray(menu.id, menuIds));
+      // メニューの価格を取得
+      const menuIds = input.items.map((i) => i.menuId);
+      const menus = await db.select().from(menu).where(inArray(menu.id, menuIds));
 
-    // トッピングの価格を取得
-    const allToppingIds = input.items.flatMap((i) => i.toppingIds || []);
-    const toppings =
-      allToppingIds.length > 0
-        ? await db
-            .select()
-            .from(topping)
-            .where(inArray(topping.id, allToppingIds))
-        : [];
+      // トッピングの価格を取得
+      const allToppingIds = input.items.flatMap((i) => i.toppingIds || []);
+      const toppings =
+        allToppingIds.length > 0
+          ? await db
+              .select()
+              .from(topping)
+              .where(inArray(topping.id, allToppingIds))
+          : [];
 
-    // 合計金額を計算
-    let totalPrice = 0;
-    const orderItems: {
-      id: string;
-      orderId: string;
-      menuId: string;
-      menuName: string;
-      menuPrice: number;
-      quantity: number;
-      toppingIds?: string[];
-    }[] = [];
+      // 合計金額を計算
+      let totalPrice = 0;
+      const orderItems: {
+        id: string;
+        orderId: string;
+        menuId: string;
+        menuName: string;
+        menuPrice: number;
+        quantity: number;
+        toppingIds?: string[];
+      }[] = [];
 
-    for (const item of input.items) {
-      const menuItem = menus.find((m) => m.id === item.menuId);
-      if (!menuItem) {
-        return c.json(
-          { error: `メニュー ${item.menuId} が見つかりません` },
-          404
+      for (const item of input.items) {
+        const menuItem = menus.find((m) => m.id === item.menuId);
+        if (!menuItem) {
+          return c.json(
+            { error: `メニュー ${item.menuId} が見つかりません` },
+            404
+          );
+        }
+
+        const itemToppings = toppings.filter((t) =>
+          (item.toppingIds || []).includes(t.id)
         );
+        const toppingTotal = itemToppings.reduce((sum, t) => sum + t.price, 0);
+        const unitPrice = menuItem.price + toppingTotal;
+        const subtotal = unitPrice * item.quantity;
+
+        orderItems.push({
+          id: nanoid(),
+          orderId,
+          menuId: item.menuId,
+          menuName: menuItem.name,
+          menuPrice: menuItem.price,
+          quantity: item.quantity,
+          toppingIds: item.toppingIds,
+        });
+
+        totalPrice += subtotal;
       }
 
-      const itemToppings = toppings.filter((t) =>
-        (item.toppingIds || []).includes(t.id)
-      );
-      const toppingTotal = itemToppings.reduce((sum, t) => sum + t.price, 0);
-      const unitPrice = menuItem.price + toppingTotal;
-      const subtotal = unitPrice * item.quantity;
-
-      orderItems.push({
-        id: nanoid(),
-        orderId,
-        menuId: item.menuId,
-        menuName: menuItem.name,
-        menuPrice: menuItem.price,
-        quantity: item.quantity,
-        toppingIds: item.toppingIds,
+      // 注文を作成
+      await db.insert(order).values({
+        id: orderId,
+        circleId: input.circleId,
+        cashierId: input.cashierId,
+        orderNumber,
+        peopleCount: input.peopleCount,
+        status: "pending",
+        totalPrice,
+        completed: false,
       });
 
-      totalPrice += subtotal;
-    }
+      // 注文アイテムを作成
+      for (const item of orderItems) {
+        await db.insert(orderItem).values({
+          id: item.id,
+          orderId: item.orderId,
+          menuId: item.menuId,
+          menuName: item.menuName,
+          menuPrice: item.menuPrice,
+          quantity: item.quantity,
+        });
 
-    // 注文を作成
-    await db.insert(order).values({
-      id: orderId,
-      circleId: input.circleId,
-      cashierId: input.cashierId,
-      orderNumber,
-      peopleCount: input.peopleCount,
-      status: "pending",
-      totalPrice,
-      completed: false,
-    });
-
-    // 注文アイテムを作成
-    for (const item of orderItems) {
-      await db.insert(orderItem).values({
-        id: item.id,
-        orderId: item.orderId,
-        menuId: item.menuId,
-        menuName: item.menuName,
-        menuPrice: item.menuPrice,
-        quantity: item.quantity,
-      });
-
-      // トッピングを関連付け
-      if (item.toppingIds && item.toppingIds.length > 0) {
-        for (const toppingId of item.toppingIds) {
-          const toppingItem = toppings.find((t) => t.id === toppingId);
-          if (toppingItem) {
-            await db.insert(orderItemTopping).values({
-              id: nanoid(),
-              orderItemId: item.id,
-              toppingId,
-              toppingName: toppingItem.name,
-              toppingPrice: toppingItem.price,
-            });
+        // トッピングを関連付け
+        if (item.toppingIds && item.toppingIds.length > 0) {
+          for (const toppingId of item.toppingIds) {
+            const toppingItem = toppings.find((t) => t.id === toppingId);
+            if (toppingItem) {
+              await db.insert(orderItemTopping).values({
+                id: nanoid(),
+                orderItemId: item.id,
+                toppingId,
+                toppingName: toppingItem.name,
+                toppingPrice: toppingItem.price,
+              });
+            }
           }
         }
       }
-    }
 
-    return c.json({ id: orderId, orderNumber }, 201);
+      return c.json({ id: orderId, orderNumber }, 201);
+    } catch (error) {
+      console.error("Order creation error:", error);
+      return c.json(
+        { error: error instanceof Error ? error.message : "注文の作成に失敗しました" },
+        500
+      );
+    }
   }
 );
 

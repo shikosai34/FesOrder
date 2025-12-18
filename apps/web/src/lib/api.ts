@@ -344,8 +344,7 @@ export interface OrderItem {
   menuId: string;
   menuName: string;
   quantity: number;
-  unitPrice: number;
-  subtotal: number;
+  menuPrice: number;
   toppings?: OrderItemTopping[];
 }
 
@@ -489,6 +488,7 @@ export interface UpdateStaffInput {
 export interface CreateOrderInput {
   circleId: string;
   staffId?: string;
+  peopleCount?: number;
   items: {
     menuId: string;
     quantity: number;

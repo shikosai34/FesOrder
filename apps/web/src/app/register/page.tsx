@@ -59,6 +59,7 @@ function RegisterPageContent() {
   const createOrder = useMutation({
     mutationFn: async (input: {
       circleId: string;
+      peopleCount: number;
       items: { menuId: string; quantity: number; toppingIds?: string[] }[];
       notes?: string;
     }) => {
@@ -159,6 +160,7 @@ function RegisterPageContent() {
 
     await createOrder.mutateAsync({
       circleId,
+      peopleCount,
       items: cart.map((item) => ({
         menuId: item.menuId,
         quantity: item.quantity,
