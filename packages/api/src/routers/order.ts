@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure } from "../index";
-import { db, order, orderItem, orderItemTopping } from "@new-modern-app/db";
-import { eq, and, desc } from "drizzle-orm";
+import { db, order, orderItem, orderItemTopping, menu } from "@new-modern-app/db";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 export const orderRouter = router({
@@ -110,6 +110,23 @@ export const orderRouter = router({
       const orderId = nanoid();
       const orderNumber = `ORD-${Date.now()}-${nanoid(6)}`;
 
+      // 在庫チェック
+      for (const item of input.items) {
+        const menuItem = await db.query.menu.findFirst({
+          where: eq(menu.id, item.menuId),
+        });
+
+        if (!menuItem) {
+          throw new Error(`商品が見つかりません: ${item.menuName}`);
+        }
+
+        if (menuItem.stockQuantity < item.quantity) {
+          throw new Error(
+            `在庫が不足しています: ${item.menuName} (在庫: ${menuItem.stockQuantity}個, 注文: ${item.quantity}個)`
+          );
+        }
+      }
+
       // 合計金額を計算
       let totalPrice = 0;
       for (const item of input.items) {
@@ -132,7 +149,7 @@ export const orderRouter = router({
         cashierId: input.cashierId,
       });
 
-      // 注文アイテムを作成
+      // 注文アイテムを作成して在庫を減らす
       for (const item of input.items) {
         const orderItemId = nanoid();
 
@@ -144,6 +161,14 @@ export const orderRouter = router({
           menuPrice: item.menuPrice,
           quantity: item.quantity,
         });
+
+        // 在庫を減らす
+        await db
+          .update(menu)
+          .set({
+            stockQuantity: sql`${menu.stockQuantity} - ${item.quantity}`,
+          })
+          .where(eq(menu.id, item.menuId));
 
         // トッピングを追加
         if (item.toppings && item.toppings.length > 0) {

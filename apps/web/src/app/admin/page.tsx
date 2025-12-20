@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus,
   Calendar,
@@ -161,355 +160,348 @@ export default function AdminPage() {
         </Link>
       </div>
 
-      <Tabs defaultValue="events" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
-          <TabsTrigger value="events" className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            イベント管理
-          </TabsTrigger>
-          <TabsTrigger value="circles" className="flex items-center gap-2">
-            <Building2 className="h-4 w-4" />
-            サークル管理
-          </TabsTrigger>
-        </TabsList>
+      {/* イベント管理セクション */}
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-semibold flex items-center gap-2">
+            <Calendar className="h-6 w-6" />
+            イベント選択
+          </h2>
+          <Button onClick={() => setShowEventForm(!showEventForm)}>
+            <Plus className="mr-2 h-4 w-4" />
+            新規イベント
+          </Button>
+        </div>
 
-        {/* イベント管理タブ */}
-        <TabsContent value="events" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-semibold">イベント一覧</h2>
-            <Button onClick={() => setShowEventForm(!showEventForm)}>
-              <Plus className="mr-2 h-4 w-4" />
-              新規イベント
-            </Button>
-          </div>
-
-          {/* イベント作成フォーム */}
-          {showEventForm && (
-            <Card>
-              <CardHeader>
-                <CardTitle>新規イベント作成</CardTitle>
-                <CardDescription>
-                  新しいイベント（文化祭など）を作成します
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="eventName">イベント名 *</Label>
-                    <Input
-                      id="eventName"
-                      placeholder="例: 茨香祭2025"
-                      value={eventForm.eventName}
-                      onChange={(e) =>
-                        setEventForm({
-                          ...eventForm,
-                          eventName: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="eventDescription">説明</Label>
-                    <Input
-                      id="eventDescription"
-                      placeholder="イベントの説明"
-                      value={eventForm.description}
-                      onChange={(e) =>
-                        setEventForm({
-                          ...eventForm,
-                          description: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="startDate">開始日</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={eventForm.startDate}
-                      onChange={(e) =>
-                        setEventForm({
-                          ...eventForm,
-                          startDate: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="endDate">終了日</Label>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={eventForm.endDate}
-                      onChange={(e) =>
-                        setEventForm({ ...eventForm, endDate: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowEventForm(false)}
-                  >
-                    キャンセル
-                  </Button>
-                  <Button
-                    onClick={handleCreateEvent}
-                    disabled={
-                      !eventForm.eventName || createEventMutation.isPending
+        {/* イベント作成フォーム */}
+        {showEventForm && (
+          <Card>
+            <CardHeader>
+              <CardTitle>新規イベント作成</CardTitle>
+              <CardDescription>
+                新しいイベント（文化祭など）を作成します
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="eventName">イベント名 *</Label>
+                  <Input
+                    id="eventName"
+                    placeholder="例: 茨香祭2025"
+                    value={eventForm.eventName}
+                    onChange={(e) =>
+                      setEventForm({
+                        ...eventForm,
+                        eventName: e.target.value,
+                      })
                     }
-                  >
-                    {createEventMutation.isPending ? "作成中..." : "作成"}
-                  </Button>
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* イベント一覧 */}
-          {eventsLoading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              読み込み中...
-            </div>
-          ) : events && events.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {events.map((evt) => (
-                <Card
-                  key={evt.id}
-                  className={`cursor-pointer transition-all hover:border-primary ${
-                    selectedEventId === evt.id
-                      ? "border-primary ring-2 ring-primary"
-                      : ""
-                  }`}
-                  onClick={() => setSelectedEventId(evt.id)}
+                <div className="space-y-2">
+                  <Label htmlFor="eventDescription">説明</Label>
+                  <Input
+                    id="eventDescription"
+                    placeholder="イベントの説明"
+                    value={eventForm.description}
+                    onChange={(e) =>
+                      setEventForm({
+                        ...eventForm,
+                        description: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="startDate">開始日</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={eventForm.startDate}
+                    onChange={(e) =>
+                      setEventForm({
+                        ...eventForm,
+                        startDate: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endDate">終了日</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={eventForm.endDate}
+                    onChange={(e) =>
+                      setEventForm({ ...eventForm, endDate: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowEventForm(false)}
                 >
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Calendar className="h-5 w-5" />
-                      {evt.eventName}
-                    </CardTitle>
-                    {evt.description && (
-                      <CardDescription>{evt.description}</CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      {evt.startDate && (
-                        <p>
-                          開始:{" "}
-                          {new Date(evt.startDate).toLocaleDateString("ja-JP")}
-                        </p>
-                      )}
-                      {evt.endDate && (
-                        <p>
-                          終了:{" "}
-                          {new Date(evt.endDate).toLocaleDateString("ja-JP")}
-                        </p>
-                      )}
-                      <p className="text-xs mt-2">ID: {evt.id}</p>
-                    </div>
-                    {selectedEventId === evt.id && (
-                      <Badge className="mt-2">選択中</Badge>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>まだイベントがありません</p>
-                <p className="text-sm">
-                  上のボタンから新規イベントを作成してください
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+                  キャンセル
+                </Button>
+                <Button
+                  onClick={handleCreateEvent}
+                  disabled={
+                    !eventForm.eventName || createEventMutation.isPending
+                  }
+                >
+                  {createEventMutation.isPending ? "作成中..." : "作成"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* サークル管理タブ */}
-        <TabsContent value="circles" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-semibold">サークル一覧</h2>
-              {selectedEventId && (
-                <p className="text-sm text-muted-foreground">
-                  選択中のイベント:{" "}
-                  {events?.find((e) => e.id === selectedEventId)?.eventName}
-                </p>
-              )}
-            </div>
-            <Button
-              onClick={() => setShowCircleForm(!showCircleForm)}
-              disabled={!selectedEventId}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              新規サークル
-            </Button>
+        {/* イベント一覧 */}
+        {eventsLoading ? (
+          <div className="text-center py-8 text-muted-foreground">
+            読み込み中...
           </div>
-
-          {!selectedEventId && (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>イベントを選択してください</p>
-                <p className="text-sm">
-                  「イベント管理」タブでイベントをクリックして選択
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* サークル作成フォーム */}
-          {showCircleForm && selectedEventId && (
-            <Card>
-              <CardHeader>
-                <CardTitle>新規サークル作成</CardTitle>
-                <CardDescription>
-                  選択したイベントに新しいサークル（出店）を追加します
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="circleName">サークル名 *</Label>
-                    <Input
-                      id="circleName"
-                      placeholder="例: 2年1組"
-                      value={circleForm.name}
-                      onChange={(e) =>
-                        setCircleForm({ ...circleForm, name: e.target.value })
-                      }
-                    />
+        ) : events && events.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {events.map((evt) => (
+              <Card
+                key={evt.id}
+                className={`cursor-pointer transition-all hover:border-primary ${
+                  selectedEventId === evt.id
+                    ? "border-primary ring-2 ring-primary"
+                    : ""
+                }`}
+                onClick={() => setSelectedEventId(evt.id)}
+              >
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    {evt.eventName}
+                  </CardTitle>
+                  {evt.description && (
+                    <CardDescription>{evt.description}</CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    {evt.startDate && (
+                      <p>
+                        開始:{" "}
+                        {new Date(evt.startDate).toLocaleDateString("ja-JP")}
+                      </p>
+                    )}
+                    {evt.endDate && (
+                      <p>
+                        終了:{" "}
+                        {new Date(evt.endDate).toLocaleDateString("ja-JP")}
+                      </p>
+                    )}
+                    <p className="text-xs mt-2">ID: {evt.id}</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="circlePassword">パスワード *</Label>
-                    <div className="relative">
-                      <Input
-                        id="circlePassword"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="ログイン用パスワード"
-                        value={circleForm.password}
-                        onChange={(e) =>
-                          setCircleForm({
-                            ...circleForm,
-                            password: e.target.value,
-                          })
-                        }
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="col-span-2 space-y-2">
-                    <Label htmlFor="circleDescription">説明</Label>
+                  {selectedEventId === evt.id && (
+                    <Badge className="mt-2">選択中</Badge>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>まだイベントがありません</p>
+              <p className="text-sm">
+                上のボタンから新規イベントを作成してください
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* サークル管理セクション */}
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-semibold flex items-center gap-2">
+              <Building2 className="h-6 w-6" />
+              サークル管理
+            </h2>
+            {selectedEventId && (
+              <p className="text-sm text-muted-foreground mt-1">
+                選択中のイベント:{" "}
+                {events?.find((e) => e.id === selectedEventId)?.eventName}
+              </p>
+            )}
+          </div>
+          <Button
+            onClick={() => setShowCircleForm(!showCircleForm)}
+            disabled={!selectedEventId}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            新規サークル
+          </Button>
+        </div>
+
+        {!selectedEventId && (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>イベントを選択してください</p>
+              <p className="text-sm">
+                上のイベント一覧からイベントをクリックして選択
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* サークル作成フォーム */}
+        {showCircleForm && selectedEventId && (
+          <Card>
+            <CardHeader>
+              <CardTitle>新規サークル作成</CardTitle>
+              <CardDescription>
+                選択したイベントに新しいサークル（出店）を追加します
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="circleName">サークル名 *</Label>
+                  <Input
+                    id="circleName"
+                    placeholder="例: 2年1組"
+                    value={circleForm.name}
+                    onChange={(e) =>
+                      setCircleForm({ ...circleForm, name: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="circlePassword">パスワード *</Label>
+                  <div className="relative">
                     <Input
-                      id="circleDescription"
-                      placeholder="サークルの説明（例: たこ焼き屋）"
-                      value={circleForm.description}
+                      id="circlePassword"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="ログイン用パスワード"
+                      value={circleForm.password}
                       onChange={(e) =>
                         setCircleForm({
                           ...circleForm,
-                          description: e.target.value,
+                          password: e.target.value,
                         })
                       }
                     />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
                 </div>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCircleForm(false)}
-                  >
-                    キャンセル
-                  </Button>
-                  <Button
-                    onClick={handleCreateCircle}
-                    disabled={
-                      !circleForm.name ||
-                      !circleForm.password ||
-                      createCircleMutation.isPending
+                <div className="col-span-2 space-y-2">
+                  <Label htmlFor="circleDescription">説明</Label>
+                  <Input
+                    id="circleDescription"
+                    placeholder="サークルの説明（例: たこ焼き屋）"
+                    value={circleForm.description}
+                    onChange={(e) =>
+                      setCircleForm({
+                        ...circleForm,
+                        description: e.target.value,
+                      })
                     }
-                  >
-                    {createCircleMutation.isPending ? "作成中..." : "作成"}
-                  </Button>
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCircleForm(false)}
+                >
+                  キャンセル
+                </Button>
+                <Button
+                  onClick={handleCreateCircle}
+                  disabled={
+                    !circleForm.name ||
+                    !circleForm.password ||
+                    createCircleMutation.isPending
+                  }
+                >
+                  {createCircleMutation.isPending ? "作成中..." : "作成"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-          {/* サークル一覧 */}
-          {selectedEventId && (
-            <>
-              {circlesLoading ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  読み込み中...
-                </div>
-              ) : circles && circles.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {circles.map((cir) => (
-                    <Card key={cir.id}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span className="flex items-center gap-2">
-                            <Users className="h-5 w-5" />
-                            {cir.name}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm(`「${cir.name}」を削除しますか？`)) {
-                                deleteCircleMutation.mutate({ id: cir.id });
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </CardTitle>
-                        {cir.description && (
-                          <CardDescription>{cir.description}</CardDescription>
-                        )}
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-xs text-muted-foreground">
-                          <p>ID: {cir.id}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">
-                    <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>このイベントにはまだサークルがありません</p>
-                    <p className="text-sm">
-                      上のボタンから新規サークルを作成してください
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </>
-          )}
-        </TabsContent>
-      </Tabs>
+        {/* サークル一覧 */}
+        {selectedEventId && (
+          <>
+            {circlesLoading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                読み込み中...
+              </div>
+            ) : circles && circles.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {circles.map((cir) => (
+                  <Card key={cir.id}>
+                    <CardHeader>
+                      <CardTitle className="flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          <Users className="h-5 w-5" />
+                          {cir.name}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(`「${cir.name}」を削除しますか？`)) {
+                              deleteCircleMutation.mutate({ id: cir.id });
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </CardTitle>
+                      {cir.description && (
+                        <CardDescription>{cir.description}</CardDescription>
+                      )}
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-xs text-muted-foreground">
+                        <p>ID: {cir.id}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>このイベントにはまだサークルがありません</p>
+                  <p className="text-sm">
+                    上のボタンから新規サークルを作成してください
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
