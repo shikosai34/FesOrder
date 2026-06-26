@@ -74,7 +74,8 @@ function MembersContent() {
 
   const addMemberMutation = useMutation({
     mutationFn: (input: {
-      userId: string;
+      userEmail: string;
+      userName: string;
       circleId?: string;
       eventId?: string;
       role: Role;
@@ -125,7 +126,8 @@ function MembersContent() {
   const handleAddMember = () => {
     if (!circleId) return;
     addMemberMutation.mutate({
-      userId: newMember.userId,
+      userEmail: newMember.userEmail,
+      userName: newMember.userName,
       circleId,
       role: newMember.role,
       pin: newMember.pin || undefined,

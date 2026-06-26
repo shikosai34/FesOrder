@@ -359,12 +359,12 @@ export interface SalesStats {
 }
 
 export type Role =
-  | "owner"
-  | "admin"
-  | "manager"
+  | "event_admin"
+  | "circle_manager"
   | "cashier"
-  | "kitchen"
-  | "server"
+  | "kitchen_staff"
+  | "waiter"
+  | "stock_manager"
   | "viewer";
 
 export interface RoleInfo {
@@ -510,7 +510,8 @@ export interface CheckPermissionResult {
 }
 
 export interface AddMemberInput {
-  userId: string;
+  userEmail: string;
+  userName: string;
   circleId?: string;
   eventId?: string;
   role: Role;
@@ -527,7 +528,8 @@ export interface CreateInviteInput {
 
 export interface AcceptInviteInput {
   token: string;
-  userId: string;
+  userEmail: string;
+  userName: string;
   pin?: string;
 }
 

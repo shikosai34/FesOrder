@@ -39,7 +39,8 @@ export default function InvitePage({
   const acceptInviteMutation = useMutation({
     mutationFn: async (input: {
       token: string;
-      userId: string;
+      userEmail: string;
+      userName: string;
       pin?: string;
     }) => {
       return await membershipApi.acceptInvite(input);
@@ -75,7 +76,8 @@ export default function InvitePage({
     setError(null);
     acceptInviteMutation.mutate({
       token,
-      userId: formData.userId,
+      userEmail: formData.userEmail,
+      userName: formData.userName,
       pin: formData.pin || undefined,
     });
   };

@@ -5,6 +5,7 @@ import { db, event, circle } from "@new-modern-app/db";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import bcrypt from "bcryptjs";
+import { getAdminSession } from "../utils/auth";
 
 const eventRoutes = new Hono();
 
@@ -39,6 +40,11 @@ eventRoutes.post(
     })
   ),
   async (c) => {
+    const session = await getAdminSession(c);
+    if (!session) {
+      return c.json({ error: "管理者権限が必要です" }, 403);
+    }
+
     const input = c.req.valid("json");
     const id = nanoid();
 
@@ -56,6 +62,11 @@ eventRoutes.post(
 
 // イベント削除
 eventRoutes.delete("/:id", async (c) => {
+  const session = await getAdminSession(c);
+  if (!session) {
+    return c.json({ error: "管理者権限が必要です" }, 403);
+  }
+
   const id = c.req.param("id");
   await db.delete(event).where(eq(event.id, id));
   return c.json({ success: true });

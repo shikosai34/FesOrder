@@ -10,12 +10,12 @@ const membershipRoutes = new Hono();
 
 // ロール定義
 const ROLES = [
-  "owner",
-  "admin",
-  "manager",
+  "event_admin",
+  "circle_manager",
   "cashier",
-  "kitchen",
-  "server",
+  "kitchen_staff",
+  "waiter",
+  "stock_manager",
   "viewer",
 ] as const;
 
@@ -23,25 +23,61 @@ type Role = (typeof ROLES)[number];
 
 // ロールの権限マッピング
 const ROLE_PERMISSIONS: Record<Role, string[]> = {
-  owner: ["*"], // 全権限
-  admin: [
-    "manage_members",
-    "manage_menu",
-    "manage_orders",
-    "manage_staff",
-    "view_sales",
-    "manage_settings",
+  event_admin: ["*"], // 全権限
+  circle_manager: [
+    "circle:read",
+    "circle:write",
+    "menu:read",
+    "menu:write",
+    "menu:delete",
+    "order:read",
+    "order:write",
+    "staff:read",
+    "staff:write",
+    "staff:delete",
+    "stock:read",
+    "stock:write",
+    "sales:read",
+    "member:read",
+    "member:write",
   ],
-  manager: ["manage_menu", "manage_orders", "manage_staff", "view_sales"],
-  cashier: ["create_order", "view_orders", "complete_order"],
-  kitchen: ["view_orders", "update_order_status"],
-  server: ["view_orders", "complete_order"],
-  viewer: ["view_menu", "view_orders"],
+  cashier: [
+    "circle:read",
+    "menu:read",
+    "order:read",
+    "order:write",
+    "stock:read",
+  ],
+  kitchen_staff: [
+    "circle:read",
+    "menu:read",
+    "order:read",
+    "order:write",
+    "stock:read",
+  ],
+  waiter: [
+    "circle:read",
+    "menu:read",
+    "order:read",
+    "order:write",
+  ],
+  stock_manager: [
+    "circle:read",
+    "menu:read",
+    "stock:read",
+    "stock:write",
+  ],
+  viewer: [
+    "circle:read",
+    "menu:read",
+    "order:read",
+  ],
 };
 
 // 権限チェック関数
 function hasPermission(role: Role, permission: string): boolean {
   const permissions = ROLE_PERMISSIONS[role];
+  if (!permissions) return false;
   return permissions.includes("*") || permissions.includes(permission);
 }
 
