@@ -7,6 +7,8 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useRouter } from "next/navigation";
+import { saveAuthInfo } from "@/hooks/useCircleAuth";
+import { membershipApi } from "@/lib/api";
 
 export default function SignInForm({
 	onSwitchToSignUp,
@@ -28,9 +30,43 @@ export default function SignInForm({
 					password: value.password,
 				},
 				{
-					onSuccess: () => {
-						router.push("/dashboard");
-						toast.success("Sign in successful");
+					onSuccess: async () => {
+						try {
+							const memberships = await membershipApi.listMy(value.email);
+							
+							const adminMembership = memberships.find((m) => m.role === "event_admin");
+							const circleMembership = memberships.find((m) => m.circleId);
+
+							if (adminMembership) {
+								saveAuthInfo({
+									circleId: null,
+									eventId: adminMembership.eventId,
+									userEmail: adminMembership.userEmail,
+									userName: adminMembership.userName,
+									role: "event_admin",
+									membershipId: adminMembership.id,
+								});
+								router.push("/admin");
+								toast.success("管理者としてログインしました");
+							} else if (circleMembership) {
+								saveAuthInfo({
+									circleId: circleMembership.circleId,
+									eventId: circleMembership.eventId,
+									userEmail: circleMembership.userEmail,
+									userName: circleMembership.userName,
+									role: circleMembership.role,
+									membershipId: circleMembership.id,
+								});
+								router.push("/dashboard");
+								toast.success(`${circleMembership.userName}さんとしてログインしました`);
+							} else {
+								router.push("/dashboard");
+								toast.success("ログインしました");
+							}
+						} catch (error) {
+							router.push("/dashboard");
+							toast.success("ログインしました");
+						}
 					},
 					onError: (error) => {
 						toast.error(error.error.message || error.error.statusText);

@@ -23,6 +23,7 @@ import {
   Shield,
   Eye,
   EyeOff,
+  Edit,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -47,6 +48,19 @@ export default function AdminPage() {
     name: "",
     description: "",
     password: "",
+    managerEmail: "",
+    managerName: "",
+  });
+
+  // サークル編集フォーム
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editingCircleId, setEditingCircleId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    description: "",
+    password: "",
+    managerEmail: "",
+    managerName: "",
   });
 
   // イベント一覧取得
@@ -95,6 +109,8 @@ export default function AdminPage() {
       name: string;
       password: string;
       description?: string;
+      managerEmail: string;
+      managerName?: string;
     }) => {
       return await circleApi.create(input);
     },
@@ -102,10 +118,47 @@ export default function AdminPage() {
       queryClient.invalidateQueries({ queryKey: ["circles"] });
       toast.success("サークルを作成しました");
       setShowCircleForm(false);
-      setCircleForm({ name: "", description: "", password: "" });
+      setCircleForm({
+        name: "",
+        description: "",
+        password: "",
+        managerEmail: "",
+        managerName: "",
+      });
     },
     onError: (error: Error) => {
       toast.error(error.message || "サークル作成に失敗しました");
+    },
+  });
+
+  // サークル更新
+  const updateCircleMutation = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      name?: string;
+      description?: string;
+      password?: string;
+      managerEmail?: string;
+      managerName?: string;
+    }) => {
+      const { id, ...data } = input;
+      return await circleApi.update(id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["circles"] });
+      toast.success("サークル情報を更新しました");
+      setShowEditForm(false);
+      setEditingCircleId(null);
+      setEditForm({
+        name: "",
+        description: "",
+        password: "",
+        managerEmail: "",
+        managerName: "",
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "サークル更新に失敗しました");
     },
   });
 
@@ -142,6 +195,20 @@ export default function AdminPage() {
       name: circleForm.name,
       password: circleForm.password,
       description: circleForm.description || undefined,
+      managerEmail: circleForm.managerEmail,
+      managerName: circleForm.managerName || undefined,
+    });
+  };
+
+  const handleEditCircle = () => {
+    if (!editingCircleId) return;
+    updateCircleMutation.mutate({
+      id: editingCircleId,
+      name: editForm.name,
+      description: editForm.description || undefined,
+      password: editForm.password || undefined,
+      managerEmail: editForm.managerEmail,
+      managerName: editForm.managerName || undefined,
     });
   };
 
@@ -362,7 +429,7 @@ export default function AdminPage() {
             <CardHeader>
               <CardTitle>新規サークル作成</CardTitle>
               <CardDescription>
-                選択したイベントに新しいサークル（出店）を追加します
+                選択したイベントに新しいサークル（出店）を追加し、代表者を設定します
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -408,6 +475,35 @@ export default function AdminPage() {
                     </Button>
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="managerEmail">代表者メールアドレス *</Label>
+                  <Input
+                    id="managerEmail"
+                    type="email"
+                    placeholder="leader@example.com"
+                    value={circleForm.managerEmail}
+                    onChange={(e) =>
+                      setCircleForm({
+                        ...circleForm,
+                        managerEmail: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="managerName">代表者名</Label>
+                  <Input
+                    id="managerName"
+                    placeholder="代表者の名前 (未入力時は「サークル名 代表者」)"
+                    value={circleForm.managerName}
+                    onChange={(e) =>
+                      setCircleForm({
+                        ...circleForm,
+                        managerName: e.target.value,
+                      })
+                    }
+                  />
+                </div>
                 <div className="col-span-2 space-y-2">
                   <Label htmlFor="circleDescription">説明</Label>
                   <Input
@@ -435,10 +531,132 @@ export default function AdminPage() {
                   disabled={
                     !circleForm.name ||
                     !circleForm.password ||
+                    !circleForm.managerEmail ||
                     createCircleMutation.isPending
                   }
                 >
                   {createCircleMutation.isPending ? "作成中..." : "作成"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* サークル編集フォーム */}
+        {showEditForm && selectedEventId && editingCircleId && (
+          <Card>
+            <CardHeader>
+              <CardTitle>サークル情報の編集</CardTitle>
+              <CardDescription>
+                サークルの詳細情報や代表者情報を変更します。パスワードを変更しない場合は空欄のままにしてください。
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editCircleName">サークル名 *</Label>
+                  <Input
+                    id="editCircleName"
+                    placeholder="例: 2年1組"
+                    value={editForm.name}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, name: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editCirclePassword">パスワード (変更する場合のみ)</Label>
+                  <div className="relative">
+                    <Input
+                      id="editCirclePassword"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="新しいログイン用パスワード"
+                      value={editForm.password}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          password: e.target.value,
+                        })
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editManagerEmail">代表者メールアドレス *</Label>
+                  <Input
+                    id="editManagerEmail"
+                    type="email"
+                    placeholder="leader@example.com"
+                    value={editForm.managerEmail}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        managerEmail: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editManagerName">代表者名</Label>
+                  <Input
+                    id="editManagerName"
+                    placeholder="代表者の名前"
+                    value={editForm.managerName}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        managerName: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="col-span-2 space-y-2">
+                  <Label htmlFor="editCircleDescription">説明</Label>
+                  <Input
+                    id="editCircleDescription"
+                    placeholder="サークルの説明"
+                    value={editForm.description}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        description: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowEditForm(false);
+                    setEditingCircleId(null);
+                  }}
+                >
+                  キャンセル
+                </Button>
+                <Button
+                  onClick={handleEditCircle}
+                  disabled={
+                    !editForm.name ||
+                    !editForm.managerEmail ||
+                    updateCircleMutation.isPending
+                  }
+                >
+                  {updateCircleMutation.isPending ? "更新中..." : "保存"}
                 </Button>
               </div>
             </CardContent>
@@ -462,27 +680,50 @@ export default function AdminPage() {
                           <Users className="h-5 w-5" />
                           {cir.name}
                         </span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (confirm(`「${cir.name}」を削除しますか？`)) {
-                              deleteCircleMutation.mutate({ id: cir.id });
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingCircleId(cir.id);
+                              setEditForm({
+                                name: cir.name,
+                                description: cir.description || "",
+                                password: "",
+                                managerEmail: cir.managerEmail || "",
+                                managerName: cir.managerName || "",
+                              });
+                              setShowEditForm(true);
+                              setShowCircleForm(false); // 作成フォームを閉じる
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm(`「${cir.name}」を削除しますか？`)) {
+                                deleteCircleMutation.mutate({ id: cir.id });
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </CardTitle>
                       {cir.description && (
                         <CardDescription>{cir.description}</CardDescription>
                       )}
                     </CardHeader>
                     <CardContent>
-                      <div className="text-xs text-muted-foreground">
-                        <p>ID: {cir.id}</p>
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <p>代表者: {cir.managerName || "未設定"} ({cir.managerEmail || "未設定"})</p>
+                        <p className="mt-2">ID: {cir.id}</p>
                       </div>
                     </CardContent>
                   </Card>

@@ -233,6 +233,8 @@ export const membershipApi = {
       method: "PATCH",
       body: { pin },
     }),
+  listMy: (userEmail: string) =>
+    fetchApi<any[]>(`/api/memberships/my?userEmail=${encodeURIComponent(userEmail)}`),
 };
 
 // 画像アップロード
@@ -274,6 +276,8 @@ export interface Circle {
   description: string | null;
   iconImagePath: string | null;
   backgroundImagePath: string | null;
+  managerEmail?: string;
+  managerName?: string;
 }
 
 export interface Menu {
@@ -432,12 +436,16 @@ export interface CreateCircleInput {
   name: string;
   password: string;
   description?: string;
+  managerEmail: string;
+  managerName?: string;
 }
 
 export interface UpdateCircleInput {
   name?: string;
   description?: string;
   password?: string;
+  managerEmail?: string;
+  managerName?: string;
 }
 
 export interface CreateMenuInput {

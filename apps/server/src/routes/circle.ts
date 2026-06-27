@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { db, circle, event } from "@new-modern-app/db";
+import { db, circle, event, membership } from "@new-modern-app/db";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import bcrypt from "bcryptjs";
@@ -13,29 +13,64 @@ const circleRoutes = new Hono();
 circleRoutes.get("/", async (c) => {
   const eventId = c.req.query("eventId");
 
+  const query = db
+    .select({
+      id: circle.id,
+      eventId: circle.eventId,
+      name: circle.name,
+      description: circle.description,
+      createdAt: circle.createdAt,
+      updatedAt: circle.updatedAt,
+      managerEmail: membership.userEmail,
+      managerName: membership.userName,
+    })
+    .from(circle)
+    .leftJoin(
+      membership,
+      and(
+        eq(membership.circleId, circle.id),
+        eq(membership.role, "circle_manager")
+      )
+    );
+
   if (eventId) {
-    const circles = await db
-      .select()
-      .from(circle)
-      .where(eq(circle.eventId, eventId));
-    return c.json(circles.map((c) => ({ ...c, password: undefined })));
+    const circles = await query.where(eq(circle.eventId, eventId));
+    return c.json(circles);
   }
 
-  const circles = await db.select().from(circle);
-  return c.json(circles.map((c) => ({ ...c, password: undefined })));
+  const circles = await query;
+  return c.json(circles);
 });
 
 // サークル取得
 circleRoutes.get("/:id", async (c) => {
   const id = c.req.param("id");
-  const circles = await db.select().from(circle).where(eq(circle.id, id));
+  const circles = await db
+    .select({
+      id: circle.id,
+      eventId: circle.eventId,
+      name: circle.name,
+      description: circle.description,
+      createdAt: circle.createdAt,
+      updatedAt: circle.updatedAt,
+      managerEmail: membership.userEmail,
+      managerName: membership.userName,
+    })
+    .from(circle)
+    .leftJoin(
+      membership,
+      and(
+        eq(membership.circleId, circle.id),
+        eq(membership.role, "circle_manager")
+      )
+    )
+    .where(eq(circle.id, id));
 
   if (circles.length === 0) {
     return c.json({ error: "サークルが見つかりません" }, 404);
   }
 
-  const foundCircle = circles[0]!;
-  return c.json({ ...foundCircle, password: undefined });
+  return c.json(circles[0]!);
 });
 
 // サークル作成
@@ -48,6 +83,8 @@ circleRoutes.post(
       name: z.string().min(1, "サークル名は必須です"),
       password: z.string().min(4, "パスワードは4文字以上必要です"),
       description: z.string().optional(),
+      managerEmail: z.string().email("有効なメールアドレスを入力してください"),
+      managerName: z.string().optional(),
     })
   ),
   async (c) => {
@@ -83,12 +120,25 @@ circleRoutes.post(
     // パスワードをハッシュ化
     const hashedPassword = await bcrypt.hash(input.password, 10);
 
-    await db.insert(circle).values({
-      id,
-      eventId: input.eventId,
-      name: input.name,
-      password: hashedPassword,
-      description: input.description,
+    // トランザクションでサークルと代表者メンバーシップを作成
+    await db.transaction(async (tx) => {
+      await tx.insert(circle).values({
+        id,
+        eventId: input.eventId,
+        name: input.name,
+        password: hashedPassword,
+        description: input.description,
+      });
+
+      const membershipId = nanoid();
+      await tx.insert(membership).values({
+        id: membershipId,
+        userEmail: input.managerEmail.toLowerCase(), // メールアドレスは小文字で保存
+        userName: input.managerName || `${input.name} 代表者`,
+        circleId: id,
+        role: "circle_manager",
+        isActive: true,
+      });
     });
 
     return c.json({ id }, 201);
@@ -104,11 +154,27 @@ circleRoutes.put(
       name: z.string().min(1).optional(),
       description: z.string().optional(),
       password: z.string().min(4).optional(),
+      managerEmail: z.string().email("有効なメールアドレスを入力してください").optional(),
+      managerName: z.string().optional(),
     })
   ),
   async (c) => {
+    const session = await getAdminSession(c);
+    if (!session) {
+      return c.json({ error: "管理者権限が必要です" }, 403);
+    }
+
     const id = c.req.param("id");
     const input = c.req.valid("json");
+
+    // 対象サークルの存在確認
+    const existingCircle = await db
+      .select()
+      .from(circle)
+      .where(eq(circle.id, id));
+    if (existingCircle.length === 0) {
+      return c.json({ error: "サークルが見つかりません" }, 404);
+    }
 
     const updates: Partial<typeof circle.$inferSelect> = {};
 
@@ -119,7 +185,48 @@ circleRoutes.put(
       updates.password = await bcrypt.hash(input.password, 10);
     }
 
-    await db.update(circle).set(updates).where(eq(circle.id, id));
+    // トランザクションでサークルと代表者メンバーシップを更新
+    await db.transaction(async (tx) => {
+      if (Object.keys(updates).length > 0) {
+        await tx.update(circle).set(updates).where(eq(circle.id, id));
+      }
+
+      if (input.managerEmail) {
+        const managers = await tx
+          .select()
+          .from(membership)
+          .where(
+            and(
+              eq(membership.circleId, id),
+              eq(membership.role, "circle_manager")
+            )
+          );
+
+        const manager = managers[0];
+        if (manager) {
+          // 既存の代表者を更新
+          await tx
+            .update(membership)
+            .set({
+              userEmail: input.managerEmail.toLowerCase(),
+              userName: input.managerName || manager.userName,
+            })
+            .where(eq(membership.id, manager.id));
+        } else {
+          // 既存の代表者がいない場合は新規作成
+          const currentCircle = existingCircle[0];
+          const membershipId = nanoid();
+          await tx.insert(membership).values({
+            id: membershipId,
+            userEmail: input.managerEmail.toLowerCase(),
+            userName: input.managerName || `${input.name || (currentCircle ? currentCircle.name : "サークル")} 代表者`,
+            circleId: id,
+            role: "circle_manager",
+            isActive: true,
+          });
+        }
+      }
+    });
 
     return c.json({ success: true });
   }

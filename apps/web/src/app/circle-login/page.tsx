@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
-import { eventApi, membershipApi } from "@/lib/api";
+import { eventApi, membershipApi, circleApi, type Event, type Circle } from "@/lib/api";
 import { saveAuthInfo, type RoleType } from "@/hooks/useCircleAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,15 +22,53 @@ import { KeyRound, Users } from "lucide-react";
 
 export default function CircleLoginPage() {
   const router = useRouter();
-  const [eventName, setEventName] = useState("");
-  const [circleName, setCircleName] = useState("");
+  const [events, setEvents] = useState<Event[]>([]);
+  const [circles, setCircles] = useState<Circle[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState("");
+  const [selectedCircleId, setSelectedCircleId] = useState("");
+  
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   // PIN認証用
   const [pinEmail, setPinEmail] = useState("");
   const [pin, setPin] = useState("");
-  const [pinCircleId, setPinCircleId] = useState("");
+
+  // イベント一覧取得
+  useEffect(() => {
+    eventApi.list()
+      .then((data) => {
+        setEvents(data);
+        if (data.length > 0 && data[0]) {
+          setSelectedEventId(data[0].id);
+        }
+      })
+      .catch((err) => {
+        toast.error("イベント一覧の取得に失敗しました");
+      });
+  }, []);
+
+  // 選択イベントに応じたサークル一覧取得
+  useEffect(() => {
+    if (!selectedEventId) {
+      setCircles([]);
+      setSelectedCircleId("");
+      return;
+    }
+
+    circleApi.list(selectedEventId)
+      .then((data) => {
+        setCircles(data);
+        if (data.length > 0 && data[0]) {
+          setSelectedCircleId(data[0].id);
+        } else {
+          setSelectedCircleId("");
+        }
+      })
+      .catch((err) => {
+        toast.error("サークル一覧の取得に失敗しました");
+      });
+  }, [selectedEventId]);
 
   // サークルパスワード認証
   const getCircleId = useMutation({
@@ -88,8 +126,8 @@ export default function CircleLoginPage() {
     onSuccess: (data) => {
       // 認証情報を保存
       saveAuthInfo({
-        circleId: pinCircleId,
-        eventId: null,
+        circleId: selectedCircleId,
+        eventId: selectedEventId || null,
         userEmail: pinEmail,
         userName: data.userName,
         role: data.role as RoleType,
@@ -109,10 +147,19 @@ export default function CircleLoginPage() {
     e.preventDefault();
     setIsLoading(true);
 
+    const ev = events.find((e) => e.id === selectedEventId);
+    const cir = circles.find((c) => c.id === selectedCircleId);
+
+    if (!ev || !cir) {
+      toast.error("イベントとサークルを選択してください");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       await getCircleId.mutateAsync({
-        eventName,
-        circleName,
+        eventName: ev.eventName,
+        circleName: cir.name,
         password,
       });
     } catch (error) {
@@ -124,11 +171,17 @@ export default function CircleLoginPage() {
     e.preventDefault();
     setIsLoading(true);
 
+    if (!selectedCircleId) {
+      toast.error("サークルを選択してください");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       await authenticateWithPin.mutateAsync({
         userEmail: pinEmail,
         pin,
-        circleId: pinCircleId,
+        circleId: selectedCircleId,
       });
     } catch (error) {
       // エラーはonErrorで処理される
@@ -141,47 +194,64 @@ export default function CircleLoginPage() {
         <CardHeader>
           <CardTitle>ログイン</CardTitle>
           <CardDescription>
-            サークルにログインして管理を開始しましょう
+            イベントとサークルを選択し、ログインしてください
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="password" className="w-full">
+        <CardContent className="space-y-4">
+          {/* イベント選択 */}
+          <div className="space-y-2">
+            <Label htmlFor="eventSelect">イベント</Label>
+            <select
+              id="eventSelect"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              value={selectedEventId}
+              onChange={(e) => setSelectedEventId(e.target.value)}
+            >
+              <option value="">イベントを選択してください</option>
+              {events.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.eventName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* サークル選択 */}
+          <div className="space-y-2">
+            <Label htmlFor="circleSelect">サークル</Label>
+            <select
+              id="circleSelect"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              value={selectedCircleId}
+              onChange={(e) => setSelectedCircleId(e.target.value)}
+              disabled={!selectedEventId || circles.length === 0}
+            >
+              <option value="">
+                {circles.length === 0 ? "サークルがありません" : "サークルを選択してください"}
+              </option>
+              {circles.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <Tabs defaultValue="password" className="w-full pt-2">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="password" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                サークル
+                サークルパスワード
               </TabsTrigger>
               <TabsTrigger value="pin" className="flex items-center gap-2">
                 <KeyRound className="h-4 w-4" />
-                PIN
+                スタッフPIN
               </TabsTrigger>
             </TabsList>
 
             {/* サークルパスワード認証 */}
             <TabsContent value="password">
               <form onSubmit={handlePasswordSubmit} className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="eventName">イベント名</Label>
-                  <Input
-                    id="eventName"
-                    type="text"
-                    placeholder="例: 茨香祭2024"
-                    value={eventName}
-                    onChange={(e) => setEventName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="circleName">サークル名</Label>
-                  <Input
-                    id="circleName"
-                    type="text"
-                    placeholder="例: 2年1組"
-                    value={circleName}
-                    onChange={(e) => setCircleName(e.target.value)}
-                    required
-                  />
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">パスワード</Label>
                   <Input
@@ -193,7 +263,7 @@ export default function CircleLoginPage() {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full" disabled={isLoading || !selectedCircleId}>
                   {isLoading ? "ログイン中..." : "ログイン"}
                 </Button>
               </form>
@@ -202,20 +272,6 @@ export default function CircleLoginPage() {
             {/* PIN認証 */}
             <TabsContent value="pin">
               <form onSubmit={handlePinSubmit} className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pinCircleId">サークルID</Label>
-                  <Input
-                    id="pinCircleId"
-                    type="text"
-                    placeholder="サークルIDを入力"
-                    value={pinCircleId}
-                    onChange={(e) => setPinCircleId(e.target.value)}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    管理者から共有されたサークルIDを入力してください
-                  </p>
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="pinEmail">メールアドレス</Label>
                   <Input
@@ -238,7 +294,7 @@ export default function CircleLoginPage() {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full" disabled={isLoading || !selectedCircleId}>
                   {isLoading ? "認証中..." : "PINでログイン"}
                 </Button>
               </form>
