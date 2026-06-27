@@ -81,7 +81,7 @@ circleRoutes.post(
     z.object({
       eventId: z.string(),
       name: z.string().min(1, "サークル名は必須です"),
-      password: z.string().min(4, "パスワードは4文字以上必要です"),
+      managerPin: z.string().min(4, "一時PINは4文字以上必要です").max(6, "一時PINは6文字以下にしてください").optional(),
       description: z.string().optional(),
       managerEmail: z.string().email("有効なメールアドレスを入力してください"),
       managerName: z.string().optional(),
@@ -117,8 +117,15 @@ circleRoutes.post(
       return c.json({ error: "同じ名前のサークルが既に存在します" }, 400);
     }
 
-    // パスワードをハッシュ化
-    const hashedPassword = await bcrypt.hash(input.password, 10);
+    // 後方互換性のためにランダムなサークルパスワードを生成しハッシュ化
+    const randomPassword = nanoid(16);
+    const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+    // PINをハッシュ化
+    let pinHash: string | null = null;
+    if (input.managerPin) {
+      pinHash = await bcrypt.hash(input.managerPin, 10);
+    }
 
     // トランザクションでサークルと代表者メンバーシップを作成
     await db.transaction(async (tx) => {
@@ -137,6 +144,7 @@ circleRoutes.post(
         userName: input.managerName || `${input.name} 代表者`,
         circleId: id,
         role: "circle_manager",
+        pin: pinHash,
         isActive: true,
       });
     });
@@ -153,7 +161,7 @@ circleRoutes.put(
     z.object({
       name: z.string().min(1).optional(),
       description: z.string().optional(),
-      password: z.string().min(4).optional(),
+      managerPin: z.string().min(4).max(6).optional(),
       managerEmail: z.string().email("有効なメールアドレスを入力してください").optional(),
       managerName: z.string().optional(),
     })
@@ -181,8 +189,11 @@ circleRoutes.put(
     if (input.name) updates.name = input.name;
     if (input.description !== undefined)
       updates.description = input.description;
-    if (input.password) {
-      updates.password = await bcrypt.hash(input.password, 10);
+
+    // PINをハッシュ化
+    let pinHash: string | null = null;
+    if (input.managerPin) {
+      pinHash = await bcrypt.hash(input.managerPin, 10);
     }
 
     // トランザクションでサークルと代表者メンバーシップを更新
@@ -191,7 +202,7 @@ circleRoutes.put(
         await tx.update(circle).set(updates).where(eq(circle.id, id));
       }
 
-      if (input.managerEmail) {
+      if (input.managerEmail || pinHash || input.managerName) {
         const managers = await tx
           .select()
           .from(membership)
@@ -205,23 +216,28 @@ circleRoutes.put(
         const manager = managers[0];
         if (manager) {
           // 既存の代表者を更新
-          await tx
-            .update(membership)
-            .set({
-              userEmail: input.managerEmail.toLowerCase(),
-              userName: input.managerName || manager.userName,
-            })
-            .where(eq(membership.id, manager.id));
+          const setValues: any = {};
+          if (input.managerEmail) setValues.userEmail = input.managerEmail.toLowerCase();
+          if (input.managerName !== undefined) setValues.userName = input.managerName || manager.userName;
+          if (pinHash) setValues.pin = pinHash;
+
+          if (Object.keys(setValues).length > 0) {
+            await tx
+              .update(membership)
+              .set(setValues)
+              .where(eq(membership.id, manager.id));
+          }
         } else {
           // 既存の代表者がいない場合は新規作成
           const currentCircle = existingCircle[0];
           const membershipId = nanoid();
           await tx.insert(membership).values({
             id: membershipId,
-            userEmail: input.managerEmail.toLowerCase(),
+            userEmail: (input.managerEmail || "").toLowerCase(),
             userName: input.managerName || `${input.name || (currentCircle ? currentCircle.name : "サークル")} 代表者`,
             circleId: id,
             role: "circle_manager",
+            pin: pinHash,
             isActive: true,
           });
         }

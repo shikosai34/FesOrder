@@ -47,7 +47,7 @@ export default function AdminPage() {
   const [circleForm, setCircleForm] = useState({
     name: "",
     description: "",
-    password: "",
+    managerPin: "",
     managerEmail: "",
     managerName: "",
   });
@@ -58,7 +58,7 @@ export default function AdminPage() {
   const [editForm, setEditForm] = useState({
     name: "",
     description: "",
-    password: "",
+    managerPin: "",
     managerEmail: "",
     managerName: "",
   });
@@ -107,7 +107,7 @@ export default function AdminPage() {
     mutationFn: async (input: {
       eventId: string;
       name: string;
-      password: string;
+      managerPin?: string;
       description?: string;
       managerEmail: string;
       managerName?: string;
@@ -121,7 +121,7 @@ export default function AdminPage() {
       setCircleForm({
         name: "",
         description: "",
-        password: "",
+        managerPin: "",
         managerEmail: "",
         managerName: "",
       });
@@ -137,7 +137,7 @@ export default function AdminPage() {
       id: string;
       name?: string;
       description?: string;
-      password?: string;
+      managerPin?: string;
       managerEmail?: string;
       managerName?: string;
     }) => {
@@ -152,7 +152,7 @@ export default function AdminPage() {
       setEditForm({
         name: "",
         description: "",
-        password: "",
+        managerPin: "",
         managerEmail: "",
         managerName: "",
       });
@@ -193,7 +193,7 @@ export default function AdminPage() {
     createCircleMutation.mutate({
       eventId: selectedEventId,
       name: circleForm.name,
-      password: circleForm.password,
+      managerPin: circleForm.managerPin || undefined,
       description: circleForm.description || undefined,
       managerEmail: circleForm.managerEmail,
       managerName: circleForm.managerName || undefined,
@@ -206,7 +206,7 @@ export default function AdminPage() {
       id: editingCircleId,
       name: editForm.name,
       description: editForm.description || undefined,
-      password: editForm.password || undefined,
+      managerPin: editForm.managerPin || undefined,
       managerEmail: editForm.managerEmail,
       managerName: editForm.managerName || undefined,
     });
@@ -446,34 +446,19 @@ export default function AdminPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="circlePassword">パスワード *</Label>
-                  <div className="relative">
-                    <Input
-                      id="circlePassword"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="ログイン用パスワード"
-                      value={circleForm.password}
-                      onChange={(e) =>
-                        setCircleForm({
-                          ...circleForm,
-                          password: e.target.value,
-                        })
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
+                  <Label htmlFor="circlePin">代表者一時PINコード (4〜6桁)</Label>
+                  <Input
+                    id="circlePin"
+                    type="password"
+                    placeholder="例: 1234"
+                    value={circleForm.managerPin}
+                    onChange={(e) =>
+                      setCircleForm({
+                        ...circleForm,
+                        managerPin: e.target.value,
+                      })
+                    }
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="managerEmail">代表者メールアドレス *</Label>
@@ -530,7 +515,6 @@ export default function AdminPage() {
                   onClick={handleCreateCircle}
                   disabled={
                     !circleForm.name ||
-                    !circleForm.password ||
                     !circleForm.managerEmail ||
                     createCircleMutation.isPending
                   }
@@ -548,7 +532,7 @@ export default function AdminPage() {
             <CardHeader>
               <CardTitle>サークル情報の編集</CardTitle>
               <CardDescription>
-                サークルの詳細情報や代表者情報を変更します。パスワードを変更しない場合は空欄のままにしてください。
+                サークルの詳細情報や代表者情報を変更します。代表者一時PINを変更しない場合は空欄のままにしてください。
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -565,34 +549,19 @@ export default function AdminPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="editCirclePassword">パスワード (変更する場合のみ)</Label>
-                  <div className="relative">
-                    <Input
-                      id="editCirclePassword"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="新しいログイン用パスワード"
-                      value={editForm.password}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          password: e.target.value,
-                        })
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
+                  <Label htmlFor="editCirclePin">代表者一時PINコード (変更する場合のみ)</Label>
+                  <Input
+                    id="editCirclePin"
+                    type="password"
+                    placeholder="新しい一時PINコード (4〜6桁)"
+                    value={editForm.managerPin}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        managerPin: e.target.value,
+                      })
+                    }
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="editManagerEmail">代表者メールアドレス *</Label>
@@ -691,7 +660,7 @@ export default function AdminPage() {
                               setEditForm({
                                 name: cir.name,
                                 description: cir.description || "",
-                                password: "",
+                                managerPin: "",
                                 managerEmail: cir.managerEmail || "",
                                 managerName: cir.managerName || "",
                               });

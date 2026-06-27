@@ -434,7 +434,7 @@ export interface CreateEventInput {
 export interface CreateCircleInput {
   eventId: string;
   name: string;
-  password: string;
+  managerPin?: string;
   description?: string;
   managerEmail: string;
   managerName?: string;
@@ -443,7 +443,7 @@ export interface CreateCircleInput {
 export interface UpdateCircleInput {
   name?: string;
   description?: string;
-  password?: string;
+  managerPin?: string;
   managerEmail?: string;
   managerName?: string;
 }
