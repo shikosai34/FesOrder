@@ -82,10 +82,10 @@ function BackyardPageContent() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { label: "未着手", variant: "secondary" as const },
-      preparing: { label: "調理中", variant: "default" as const },
-      completed: { label: "完成", variant: "outline" as const },
-      cancelled: { label: "キャンセル", variant: "destructive" as const },
+      pending: { label: "未着手", variant: "default" as const },
+      preparing: { label: "調理中", variant: "warning" as const },
+      completed: { label: "完成", variant: "active" as const },
+      cancelled: { label: "キャンセル", variant: "error" as const },
     };
     const config = statusConfig[status as keyof typeof statusConfig];
     return <Badge variant={config.variant}>{config.label}</Badge>;

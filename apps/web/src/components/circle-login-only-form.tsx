@@ -81,6 +81,7 @@ export default function CircleLoginOnlyForm() {
       };
     },
     onSuccess: (data) => {
+      const circleName = circles.find((c) => c.id === selectedCircleId)?.name || null;
       // 認証情報を保存
       saveAuthInfo({
         circleId: selectedCircleId,
@@ -89,6 +90,7 @@ export default function CircleLoginOnlyForm() {
         userName: data.userName,
         role: data.role as RoleType,
         membershipId: data.membershipId,
+        circleName: circleName,
       });
 
       toast.success(`${data.userName}さん、ようこそ！`);
@@ -122,14 +124,14 @@ export default function CircleLoginOnlyForm() {
   };
 
   return (
-    <div className="mx-auto w-full mt-6 max-w-md">
-      <div className="space-y-4">
+    <div className="mx-auto w-full mt-4">
+      <div className="space-y-5">
         {/* イベント選択 */}
         <div className="space-y-2">
-          <Label htmlFor="eventSelect">イベント</Label>
+          <Label htmlFor="eventSelect" className="block font-headline uppercase text-xs tracking-wider">イベント選択</Label>
           <select
             id="eventSelect"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex w-full rounded-none border-thick border-black bg-[#F0F0F0] text-black px-3 py-2.5 font-mono text-[15px] transition-all focus:outline-none focus:border-heavy disabled:opacity-50"
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}
           >
@@ -144,10 +146,10 @@ export default function CircleLoginOnlyForm() {
 
         {/* サークル選択 */}
         <div className="space-y-2">
-          <Label htmlFor="circleSelect">サークル</Label>
+          <Label htmlFor="circleSelect" className="block font-headline uppercase text-xs tracking-wider">店舗・サークル選択</Label>
           <select
             id="circleSelect"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex w-full rounded-none border-thick border-black bg-[#F0F0F0] text-black px-3 py-2.5 font-mono text-[15px] transition-all focus:outline-none focus:border-heavy disabled:opacity-50"
             value={selectedCircleId}
             onChange={(e) => setSelectedCircleId(e.target.value)}
             disabled={!selectedEventId || circles.length === 0}
@@ -163,9 +165,9 @@ export default function CircleLoginOnlyForm() {
           </select>
         </div>
 
-        <form onSubmit={handlePinSubmit} className="space-y-4 pt-2">
+        <form onSubmit={handlePinSubmit} className="space-y-5 pt-2">
           <div className="space-y-2">
-            <Label htmlFor="pinEmail">メールアドレス</Label>
+            <Label htmlFor="pinEmail" className="block font-headline uppercase text-xs tracking-wider">代表者メールアドレス</Label>
             <Input
               id="pinEmail"
               type="email"
@@ -176,7 +178,7 @@ export default function CircleLoginOnlyForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="pin">PIN / 暗証番号</Label>
+            <Label htmlFor="pin" className="block font-headline uppercase text-xs tracking-wider">PIN / 暗証番号</Label>
             <Input
               id="pin"
               type="password"
@@ -186,7 +188,7 @@ export default function CircleLoginOnlyForm() {
               required
             />
           </div>
-          <Button type="submit" className="w-full" disabled={isLoading || !selectedCircleId}>
+          <Button type="submit" className="w-full h-12 text-base font-headline uppercase tracking-wider bg-black text-white hover:bg-white hover:text-black border-thick border-black transition-colors" disabled={isLoading || !selectedCircleId}>
             {isLoading ? "認証中..." : "ログイン"}
           </Button>
         </form>

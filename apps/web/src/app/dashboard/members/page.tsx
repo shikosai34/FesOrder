@@ -8,6 +8,7 @@ import {
   useAuth,
   ROLES,
   ROLE_NAMES,
+  PERMISSION_NAMES,
   type RoleType,
 } from "@/hooks/useCircleAuth";
 import { membershipApi, type Role } from "@/lib/api";
@@ -154,14 +155,14 @@ function MembersContent() {
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case "event_admin":
-        return "destructive";
+        return "error";
       case "circle_manager":
-        return "default";
+        return "active";
       case "cashier":
       case "kitchen_staff":
-        return "secondary";
+        return "warning";
       default:
-        return "outline";
+        return "default";
     }
   };
 
@@ -241,13 +242,13 @@ function MembersContent() {
                   {Object.entries(ROLES)
                     .filter(([key, value]) => {
                       if (role === ROLES.EVENT_ADMIN) return true;
-                      return [
+                      return ([
                         ROLES.CASHIER,
                         ROLES.KITCHEN_STAFF,
                         ROLES.WAITER,
                         ROLES.STOCK_MANAGER,
                         ROLES.VIEWER,
-                      ].includes(value as RoleType);
+                      ] as RoleType[]).includes(value as RoleType);
                     })
                     .map(([key, value]) => (
                     <option key={value} value={value}>
@@ -315,13 +316,13 @@ function MembersContent() {
                   {Object.entries(ROLES)
                     .filter(([key, value]) => {
                       if (role === ROLES.EVENT_ADMIN) return true;
-                      return [
+                      return ([
                         ROLES.CASHIER,
                         ROLES.KITCHEN_STAFF,
                         ROLES.WAITER,
                         ROLES.STOCK_MANAGER,
                         ROLES.VIEWER,
-                      ].includes(value as RoleType);
+                      ] as RoleType[]).includes(value as RoleType);
                     })
                     .map(([key, value]) => (
                     <option key={value} value={value}>
@@ -475,7 +476,7 @@ function MembersContent() {
                       {ROLE_NAMES[member.role as RoleType] || member.role}
                     </Badge>
                     {!member.isActive && (
-                      <Badge variant="secondary">非アクティブ</Badge>
+                      <Badge variant="warning">非アクティブ</Badge>
                     )}
                     <PermissionGuard permission="member:delete">
                       <Button
@@ -525,8 +526,8 @@ function MembersContent() {
                       {ROLE_NAMES[roleInfo.role as RoleType] || roleInfo.role}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    権限: {roleInfo.permissions.join(", ") || "なし"}
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    権限: {roleInfo.permissions.map(p => PERMISSION_NAMES[p] || p).join("、 ") || "なし"}
                   </p>
                 </div>
               ))}

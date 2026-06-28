@@ -15,7 +15,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, Store, UtensilsCrossed } from "lucide-react";
 import Image from "next/image";
 
 function MenuPageContent() {
@@ -64,37 +63,40 @@ function MenuPageContent() {
   // イベント選択画面
   if (!selectedEventId && !selectedCircleId) {
     return (
-      <div className="container mx-auto p-4 space-y-6">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">メニューを見る</h1>
-          <p className="text-muted-foreground">イベントを選択してください</p>
+      <div className="max-w-6xl mx-auto p-sp-4 space-y-sp-5">
+        <div className="border-b-[3px] border-black pb-sp-3 mb-sp-5">
+          <h1 className="text-[48px] font-headline uppercase tracking-tight leading-[1.0]">
+            メニューを見る
+          </h1>
+          <p className="font-mono text-[14px] uppercase tracking-[1px] mt-sp-1">
+            イベントを選択してください
+          </p>
         </div>
 
         {eventsLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-sp-3 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-40" />
             ))}
           </div>
         ) : events && events.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-sp-3 md:grid-cols-2 lg:grid-cols-3">
             {events.map((event) => (
               <Card
                 key={event.id}
-                className="cursor-pointer hover:border-primary transition-all hover:shadow-lg"
+                className="cursor-pointer hover:bg-black hover:text-white group"
                 onClick={() => setSelectedEventId(event.id)}
               >
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-primary" />
-                    {event.eventName}
-                  </CardTitle>
+                  <CardTitle>{event.eventName}</CardTitle>
                   {event.description && (
-                    <CardDescription>{event.description}</CardDescription>
+                    <CardDescription className="group-hover:text-white">
+                      {event.description}
+                    </CardDescription>
                   )}
                 </CardHeader>
                 <CardContent>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-[13px] font-mono">
                     {event.startDate && (
                       <p>
                         {new Date(event.startDate).toLocaleDateString("ja-JP")}
@@ -116,9 +118,8 @@ function MenuPageContent() {
           </div>
         ) : (
           <Card>
-            <CardContent className="py-12 text-center">
-              <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">
+            <CardContent className="py-sp-7 text-center">
+              <p className="font-body text-[16px]">
                 現在公開中のイベントはありません
               </p>
             </CardContent>
@@ -133,59 +134,61 @@ function MenuPageContent() {
     const selectedEvent = events?.find((e) => e.id === selectedEventId);
 
     return (
-      <div className="container mx-auto p-4 space-y-6">
-        <Button
-          variant="ghost"
+      <div className="max-w-6xl mx-auto p-sp-4 space-y-sp-5">
+        <button
           onClick={() => setSelectedEventId(null)}
-          className="mb-4"
+          className="font-mono text-[13px] uppercase tracking-[1px] underline hover:text-[#0000FF]"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          イベント選択に戻る
-        </Button>
+          ← イベント選択に戻る
+        </button>
 
-        <div className="text-center mb-8">
-          <Badge variant="outline" className="mb-2">
+        <div className="border-b-[3px] border-black pb-sp-3">
+          <Badge variant="default" className="mb-sp-2">
             {selectedEvent?.eventName}
           </Badge>
-          <h1 className="text-3xl font-bold mb-2">出店一覧</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-[48px] font-headline uppercase tracking-tight leading-[1.0]">
+            出店一覧
+          </h1>
+          <p className="font-mono text-[14px] uppercase tracking-[1px] mt-sp-1">
             メニューを見たいお店を選んでください
           </p>
         </div>
 
         {circlesLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-sp-3 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <Skeleton key={i} className="h-40" />
             ))}
           </div>
         ) : circles && circles.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-sp-3 md:grid-cols-2 lg:grid-cols-3">
             {circles.map((circle) => (
               <Card
                 key={circle.id}
-                className="cursor-pointer hover:border-primary transition-all hover:shadow-lg"
+                className="cursor-pointer hover:bg-black hover:text-white group"
                 onClick={() => setSelectedCircleId(circle.id)}
               >
                 <CardHeader>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-sp-3">
                     {circle.iconImagePath ? (
                       <Image
                         src={circle.iconImagePath}
                         alt={circle.name}
                         width={48}
                         height={48}
-                        className="rounded-full"
+                        className="border-[2px] border-black group-hover:border-white"
                       />
                     ) : (
-                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Store className="h-6 w-6 text-primary" />
+                      <div className="h-12 w-12 bg-[#F0F0F0] border-[2px] border-black group-hover:bg-white flex items-center justify-center">
+                        <span className="font-headline text-[18px] uppercase">
+                          {circle.name.charAt(0)}
+                        </span>
                       </div>
                     )}
                     <div>
                       <CardTitle>{circle.name}</CardTitle>
                       {circle.description && (
-                        <CardDescription className="line-clamp-2">
+                        <CardDescription className="line-clamp-2 group-hover:text-white">
                           {circle.description}
                         </CardDescription>
                       )}
@@ -197,9 +200,8 @@ function MenuPageContent() {
           </div>
         ) : (
           <Card>
-            <CardContent className="py-12 text-center">
-              <Store className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">
+            <CardContent className="py-sp-7 text-center">
+              <p className="font-body text-[16px]">
                 このイベントにはまだ出店がありません
               </p>
             </CardContent>
@@ -212,9 +214,9 @@ function MenuPageContent() {
   // メニュー表示画面
   if (circleLoading || menusLoading) {
     return (
-      <div className="container mx-auto p-4 space-y-4">
+      <div className="max-w-6xl mx-auto p-sp-4 space-y-sp-3">
         <Skeleton className="h-48 w-full" />
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-sp-3 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Skeleton key={i} className="h-96" />
           ))}
@@ -224,10 +226,9 @@ function MenuPageContent() {
   }
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="max-w-6xl mx-auto p-sp-4 space-y-sp-5">
       {/* 戻るボタン */}
-      <Button
-        variant="ghost"
+      <button
         onClick={() => {
           setSelectedCircleId(null);
           // URLパラメーターでアクセスしていた場合はイベント選択に戻る
@@ -235,53 +236,52 @@ function MenuPageContent() {
             setSelectedEventId(null);
           }
         }}
-        className="mb-4"
+        className="font-mono text-[13px] uppercase tracking-[1px] underline hover:text-[#0000FF]"
       >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        出店一覧に戻る
-      </Button>
+        ← 出店一覧に戻る
+      </button>
 
       {/* サークル情報ヘッダー */}
       {circleData && (
         <div
-          className="relative h-64 rounded-lg overflow-hidden"
-          style={{
-            backgroundImage: circleData.backgroundImagePath
-              ? `url(${circleData.backgroundImagePath})`
-              : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          className="relative min-h-[220px] border-[5px] border-black bg-black text-white p-sp-5 flex flex-col justify-center items-center text-center"
+          style={circleData.backgroundImagePath ? {
+            backgroundImage: `url(${circleData.backgroundImagePath})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
-          }}
+          } : undefined}
         >
-          <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-            <div className="text-center text-white">
-              {circleData.iconImagePath && (
-                <Image
-                  src={circleData.iconImagePath}
-                  alt={circleData.name}
-                  width={100}
-                  height={100}
-                  className="mx-auto rounded-full mb-4"
-                />
-              )}
-              <h1 className="text-4xl font-bold mb-2">{circleData.name}</h1>
-              {circleData.description && (
-                <p className="text-lg">{circleData.description}</p>
-              )}
-            </div>
+          <div className="bg-black/80 border-[3px] border-white p-sp-4 max-w-2xl w-full">
+            {circleData.iconImagePath && (
+              <Image
+                src={circleData.iconImagePath}
+                alt={circleData.name}
+                width={80}
+                height={80}
+                className="mx-auto border-[2px] border-white mb-sp-3"
+              />
+            )}
+            <h1 className="text-[48px] font-headline uppercase tracking-tight mb-sp-1 leading-[1.0]">
+              {circleData.name}
+            </h1>
+            {circleData.description && (
+              <p className="text-[15px] font-mono leading-[1.5]">{circleData.description}</p>
+            )}
           </div>
         </div>
       )}
 
       {/* メニュー一覧 */}
       <div>
-        <h2 className="text-2xl font-bold mb-4">メニュー</h2>
+        <h2 className="text-[32px] font-headline uppercase tracking-tight mb-sp-3 leading-[1.1]">
+          メニュー
+        </h2>
         {menus && menus.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-sp-3 md:grid-cols-2 lg:grid-cols-3">
             {menus.map((menu) => (
               <Card key={menu.id} className={menu.soldOut ? "opacity-60" : ""}>
                 <CardHeader>
-                  <div className="relative h-48 w-full rounded-t-lg overflow-hidden">
+                  <div className="relative h-48 w-full overflow-hidden border-b-[3px] border-black">
                     {menu.imagePath ? (
                       <Image
                         src={menu.imagePath}
@@ -290,13 +290,13 @@ function MenuPageContent() {
                         className="object-cover"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-muted">
-                        <span className="text-muted-foreground">No Image</span>
+                      <div className="flex h-full w-full items-center justify-center bg-[#F0F0F0]">
+                        <span className="font-mono text-[14px] uppercase tracking-[1px]">No Image</span>
                       </div>
                     )}
                     {menu.soldOut && (
-                      <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
-                        <span className="text-white text-2xl font-bold">
+                      <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+                        <span className="text-white text-[24px] font-headline uppercase tracking-[2px]">
                           売り切れ
                         </span>
                       </div>
@@ -304,30 +304,32 @@ function MenuPageContent() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <CardTitle className="mb-2">{menu.name}</CardTitle>
-                  <p className="text-2xl font-bold text-primary mb-2">
+                  <CardTitle className="mb-sp-2">{menu.name}</CardTitle>
+                  <p className="text-[24px] font-headline mb-sp-2">
                     ¥{menu.price.toLocaleString()}
                   </p>
                   {menu.description && (
-                    <CardDescription className="mb-2">
+                    <CardDescription className="mb-sp-2">
                       {menu.description}
                     </CardDescription>
                   )}
                   {menu.stockQuantity != null && menu.stockQuantity > 0 && (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-[12px] font-mono uppercase tracking-[1px]">
                       在庫: {menu.stockQuantity}個
                     </p>
                   )}
                 </CardContent>
                 {menu.toppings && menu.toppings.length > 0 && (
                   <CardFooter>
-                    <div className="w-full">
-                      <p className="text-sm font-semibold mb-2">トッピング:</p>
+                    <div className="w-full border-t-[2px] border-black pt-sp-2">
+                      <p className="text-[12px] font-headline uppercase tracking-[1px] mb-sp-2">
+                        トッピング:
+                      </p>
                       <div className="space-y-1">
                         {menu.toppings.map((topping) => (
                           <div
                             key={topping.id}
-                            className="flex justify-between text-sm"
+                            className="flex justify-between text-[13px] font-mono"
                           >
                             <span>{topping.name}</span>
                             <span>+¥{topping.price}</span>
@@ -341,7 +343,7 @@ function MenuPageContent() {
             ))}
           </div>
         ) : (
-          <p className="text-center text-muted-foreground">
+          <p className="text-center font-body text-[16px] py-sp-5">
             メニューがまだ登録されていません
           </p>
         )}
@@ -353,7 +355,11 @@ function MenuPageContent() {
 export default function MenuPage() {
   return (
     <Suspense
-      fallback={<div className="container mx-auto p-4">読み込み中...</div>}
+      fallback={
+        <div className="max-w-6xl mx-auto p-sp-4 font-mono text-[14px] uppercase tracking-[1px]">
+          読み込み中...
+        </div>
+      }
     >
       <MenuPageContent />
     </Suspense>

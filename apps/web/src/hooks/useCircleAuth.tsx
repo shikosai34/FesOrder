@@ -96,6 +96,31 @@ export const ROLE_PERMISSIONS = {
 
 export type Permission = (typeof ROLE_PERMISSIONS)[RoleType][number];
 
+// 権限の日本語名
+export const PERMISSION_NAMES: Record<string, string> = {
+  "event:read": "イベント閲覧",
+  "event:write": "イベント編集",
+  "event:delete": "イベント削除",
+  "circle:read": "サークル閲覧",
+  "circle:write": "サークル編集",
+  "circle:delete": "サークル削除",
+  "menu:read": "メニュー閲覧",
+  "menu:write": "メニュー編集",
+  "menu:delete": "メニュー削除",
+  "order:read": "注文閲覧",
+  "order:write": "注文操作",
+  "order:delete": "注文削除",
+  "staff:read": "スタッフ閲覧",
+  "staff:write": "スタッフ編集",
+  "staff:delete": "スタッフ削除",
+  "stock:read": "在庫閲覧",
+  "stock:write": "在庫編集",
+  "sales:read": "売上閲覧",
+  "member:read": "メンバー閲覧",
+  "member:write": "メンバー編集",
+  "member:delete": "メンバー削除",
+};
+
 // 認証情報の型
 interface AuthInfo {
   circleId: string | null;
@@ -104,6 +129,11 @@ interface AuthInfo {
   userName: string | null;
   role: RoleType | null;
   membershipId: string | null;
+  circleName?: string | null;
+  // 複数ロール対応: event_admin かつ circle_manager 等
+  isEventAdmin?: boolean;
+  adminMembershipId?: string | null;
+  adminEventId?: string | null;
 }
 
 // LocalStorageのキー
@@ -117,6 +147,10 @@ export function saveAuthInfo(info: AuthInfo) {
     if (info.circleId) {
       localStorage.setItem("circleId", info.circleId);
     }
+    if (info.circleName) {
+      localStorage.setItem("circleName", info.circleName);
+    }
+    window.dispatchEvent(new Event("authChange"));
   }
 }
 
@@ -127,7 +161,11 @@ export function getAuthInfo(): AuthInfo | null {
   const stored = localStorage.getItem(AUTH_STORAGE_KEY);
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      if (!parsed.circleName) {
+        parsed.circleName = localStorage.getItem("circleName") || null;
+      }
+      return parsed;
     } catch {
       return null;
     }
@@ -154,14 +192,19 @@ export function clearAuthInfo() {
   if (typeof window !== "undefined") {
     localStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem("circleId");
+    localStorage.removeItem("circleName");
+    window.dispatchEvent(new Event("authChange"));
   }
 }
 
-// 権限チェック
+// 権限チェック: roleベースに加え、isEventAdminフラグも考慮
 export function hasPermission(
   role: RoleType | null | undefined,
-  permission: string
+  permission: string,
+  isEventAdmin?: boolean
 ): boolean {
+  // event_adminフラグがあれば全権限を持つ
+  if (isEventAdmin) return true;
   if (!role) return false;
   const permissions = ROLE_PERMISSIONS[role] as readonly string[];
   return permissions?.includes(permission) ?? false;
@@ -170,17 +213,19 @@ export function hasPermission(
 // 複数の権限のいずれかを持っているかチェック
 export function hasAnyPermission(
   role: RoleType | null | undefined,
-  permissions: string[]
+  permissions: string[],
+  isEventAdmin?: boolean
 ): boolean {
-  return permissions.some((p) => hasPermission(role, p));
+  return permissions.some((p) => hasPermission(role, p, isEventAdmin));
 }
 
 // すべての権限を持っているかチェック
 export function hasAllPermissions(
   role: RoleType | null | undefined,
-  permissions: string[]
+  permissions: string[],
+  isEventAdmin?: boolean
 ): boolean {
-  return permissions.every((p) => hasPermission(role, p));
+  return permissions.every((p) => hasPermission(role, p, isEventAdmin));
 }
 
 // 基本的な認証フック（後方互換性維持）
@@ -192,7 +237,12 @@ export function useCircleAuth() {
   useEffect(() => {
     const authInfo = getAuthInfo();
     if (!authInfo?.circleId) {
-      router.push("/circle-login");
+      // event_admin で circleId がない場合はサークル選択に誘導せずダッシュボードを表示
+      if (authInfo?.isEventAdmin || authInfo?.role === "event_admin") {
+        setCircleId(null);
+      } else {
+        router.push("/circle-login");
+      }
     } else {
       setCircleId(authInfo.circleId);
     }
@@ -212,6 +262,24 @@ export function useAuth() {
     const info = getAuthInfo();
     setAuthInfo(info);
     setIsLoading(false);
+
+    const handleAuthChange = () => {
+      setAuthInfo(getAuthInfo());
+    };
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === AUTH_STORAGE_KEY || e.key === "circleName") {
+        handleAuthChange();
+      }
+    };
+
+    window.addEventListener("authChange", handleAuthChange);
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("authChange", handleAuthChange);
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }, []);
 
   const login = useCallback((info: AuthInfo) => {
@@ -225,29 +293,42 @@ export function useAuth() {
     router.push("/circle-login");
   }, [router]);
 
+  // event_adminフラグを考慮した権限チェック
+  const effectiveIsEventAdmin = authInfo?.isEventAdmin || authInfo?.role === "event_admin";
+
   const checkPermission = useCallback(
     (permission: Permission) => {
-      return hasPermission(authInfo?.role ?? null, permission);
+      return hasPermission(authInfo?.role ?? null, permission, effectiveIsEventAdmin);
     },
-    [authInfo?.role]
+    [authInfo?.role, effectiveIsEventAdmin]
   );
 
   const checkAnyPermission = useCallback(
     (permissions: Permission[]) => {
-      return hasAnyPermission(authInfo?.role ?? null, permissions);
+      return hasAnyPermission(authInfo?.role ?? null, permissions, effectiveIsEventAdmin);
     },
-    [authInfo?.role]
+    [authInfo?.role, effectiveIsEventAdmin]
   );
+
+  // 表示用のロール名: event_admin + circle_manager の場合は両方表示
+  let displayRoleName: string | null = null;
+  if (authInfo?.role) {
+    displayRoleName = ROLE_NAMES[authInfo.role];
+    if (authInfo.isEventAdmin && authInfo.role !== "event_admin") {
+      displayRoleName = `${ROLE_NAMES["event_admin"]} / ${displayRoleName}`;
+    }
+  }
 
   return {
     ...authInfo,
-    isAuthenticated: !!authInfo?.circleId || !!authInfo?.role,
+    isAuthenticated: !!authInfo?.circleId || !!authInfo?.role || !!authInfo?.isEventAdmin,
+    isEventAdmin: effectiveIsEventAdmin,
     isLoading,
     login,
     logout,
     checkPermission,
     checkAnyPermission,
-    roleName: authInfo?.role ? ROLE_NAMES[authInfo.role] : null,
+    roleName: displayRoleName,
   };
 }
 
@@ -265,7 +346,7 @@ export function PermissionGuard({
   requireAll?: boolean;
   fallback?: React.ReactNode;
 }) {
-  const { role, isLoading } = useAuth();
+  const { role, isLoading, isEventAdmin } = useAuth();
 
   if (isLoading) {
     return (
@@ -278,11 +359,11 @@ export function PermissionGuard({
   let hasAccess = false;
 
   if (permission) {
-    hasAccess = hasPermission(role, permission);
+    hasAccess = hasPermission(role, permission, isEventAdmin);
   } else if (permissions) {
     hasAccess = requireAll
-      ? hasAllPermissions(role, permissions)
-      : hasAnyPermission(role, permissions);
+      ? hasAllPermissions(role, permissions, isEventAdmin)
+      : hasAnyPermission(role, permissions, isEventAdmin);
   }
 
   if (!hasAccess) {
@@ -292,9 +373,29 @@ export function PermissionGuard({
   return <>{children}</>;
 }
 
-// 認証ガードコンポーネント（後方互換性維持）
+// 認証ガードコンポーネント（後方互換性維持 — event_adminもアクセス可能に）
 export function CircleAuthGuard({ children }: { children: React.ReactNode }) {
-  const { circleId, isLoading } = useCircleAuth();
+  const router = useRouter();
+  const [circleId, setCircleId] = useState<string | null>(null);
+  const [isEventAdmin, setIsEventAdmin] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const authInfo = getAuthInfo();
+    const effectiveAdmin = authInfo?.isEventAdmin || authInfo?.role === "event_admin";
+
+    if (authInfo?.circleId) {
+      setCircleId(authInfo.circleId);
+      setIsEventAdmin(!!effectiveAdmin);
+    } else if (effectiveAdmin) {
+      // event_admin は circleId がなくてもアクセス可能
+      setCircleId(null);
+      setIsEventAdmin(true);
+    } else {
+      router.push("/circle-login");
+    }
+    setIsLoading(false);
+  }, [router]);
 
   if (isLoading) {
     return (
@@ -304,7 +405,7 @@ export function CircleAuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!circleId) {
+  if (!circleId && !isEventAdmin) {
     return null;
   }
 
@@ -321,7 +422,7 @@ export function RoleGuard({
   allowedRoles: RoleType[];
   fallback?: React.ReactNode;
 }) {
-  const { role, isLoading } = useAuth();
+  const { role, isLoading, isEventAdmin } = useAuth();
 
   if (isLoading) {
     return (
@@ -329,6 +430,11 @@ export function RoleGuard({
         <Loader />
       </div>
     );
+  }
+
+  // event_admin は全ロールガードを通過
+  if (isEventAdmin) {
+    return <>{children}</>;
   }
 
   if (!role || !allowedRoles.includes(role)) {
@@ -341,13 +447,13 @@ export function RoleGuard({
 // 管理者専用認証ガード
 export function AdminAuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { role, isLoading, isAuthenticated } = useAuth();
+  const { role, isLoading, isAuthenticated, isEventAdmin } = useAuth();
 
   useEffect(() => {
-    if (!isLoading && (!isAuthenticated || role !== ROLES.EVENT_ADMIN)) {
+    if (!isLoading && (!isAuthenticated || !isEventAdmin)) {
       router.push("/dashboard");
     }
-  }, [isLoading, isAuthenticated, role, router]);
+  }, [isLoading, isAuthenticated, isEventAdmin, router]);
 
   if (isLoading) {
     return (
@@ -357,11 +463,13 @@ export function AdminAuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isAuthenticated || role !== ROLES.EVENT_ADMIN) {
+  if (!isAuthenticated || !isEventAdmin) {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-center p-4">
-        <h2 className="text-2xl font-bold text-destructive">アクセス権限がありません</h2>
-        <p className="text-muted-foreground">
+        <h2 className="text-[32px] font-headline uppercase tracking-tight leading-[1.1]">
+          アクセス権限がありません
+        </h2>
+        <p className="font-body text-[14px] leading-[1.5]">
           イベント管理機能を利用するには、全体システム管理者（event_admin）アカウントでログインする必要があります。
         </p>
       </div>

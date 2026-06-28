@@ -5,7 +5,6 @@ import SignInForm from "@/components/sign-in-form";
 import SignUpForm from "@/components/sign-up-form";
 import CircleLoginOnlyForm from "@/components/circle-login-only-form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { KeyRound, User } from "lucide-react";
 
 export default function LoginPage() {
   const [showSignUp, setShowSignUp] = useState(false);
@@ -15,25 +14,23 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-md p-6 bg-card rounded-lg border shadow-sm">
+    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-sp-3 md:p-sp-5 bg-[#F0F0F0]">
+      <div className="w-full max-w-lg p-sp-5 bg-white border-[5px] border-black text-black">
         <Tabs defaultValue="personal" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="personal" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
+            <TabsTrigger value="personal">
               個人アカウント
             </TabsTrigger>
-            <TabsTrigger value="staff" className="flex items-center gap-2">
-              <KeyRound className="h-4 w-4" />
+            <TabsTrigger value="staff">
               店舗・スタッフ簡易
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="personal" className="pt-2">
+          <TabsContent value="personal">
             <SignInForm onSwitchToSignUp={() => setShowSignUp(true)} />
           </TabsContent>
 
-          <TabsContent value="staff" className="pt-2">
+          <TabsContent value="staff">
             <CircleLoginOnlyForm />
           </TabsContent>
         </Tabs>

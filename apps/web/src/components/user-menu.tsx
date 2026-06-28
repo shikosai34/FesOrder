@@ -22,7 +22,7 @@ export default function UserMenu() {
 
 	if (!session) {
 		return (
-			<Button variant="outline" asChild>
+			<Button variant="outline" size="sm" asChild>
 				<Link href="/login">Sign In</Link>
 			</Button>
 		);
@@ -31,16 +31,19 @@ export default function UserMenu() {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button variant="outline">{session.user.name}</Button>
+				<Button variant="outline" size="sm">{session.user.name}</Button>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent className="bg-card">
+			<DropdownMenuContent className="bg-white border-[3px] border-black">
 				<DropdownMenuLabel>My Account</DropdownMenuLabel>
 				<DropdownMenuSeparator />
-				<DropdownMenuItem>{session.user.email}</DropdownMenuItem>
+				<DropdownMenuItem>
+					<span className="font-mono text-[13px]">{session.user.email}</span>
+				</DropdownMenuItem>
 				<DropdownMenuItem asChild>
 					<Button
 						variant="destructive"
 						className="w-full"
+						size="sm"
 						onClick={() => {
 							authClient.signOut({
 								fetchOptions: {

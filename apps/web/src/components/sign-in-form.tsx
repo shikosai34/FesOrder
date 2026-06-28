@@ -37,7 +37,31 @@ export default function SignInForm({
 							const adminMembership = memberships.find((m) => m.role === "event_admin");
 							const circleMembership = memberships.find((m) => m.circleId);
 
-							if (adminMembership) {
+							if (adminMembership && circleMembership) {
+								// event_admin かつ サークルメンバーの場合:
+								// サークル情報を主として保存しつつ、admin権限も保持
+								saveAuthInfo({
+									circleId: circleMembership.circleId,
+									eventId: circleMembership.eventId || adminMembership.eventId,
+									userEmail: adminMembership.userEmail,
+									userName: adminMembership.userName || circleMembership.userName,
+									role: circleMembership.role as any,
+									membershipId: circleMembership.id,
+									circleName: circleMembership.circle?.name || null,
+									isEventAdmin: true,
+									adminMembershipId: adminMembership.id,
+									adminEventId: adminMembership.eventId,
+								});
+
+								// サークル名を保存
+								if (circleMembership.circle) {
+									localStorage.setItem("circleName", circleMembership.circle.name);
+								}
+
+								router.push("/dashboard");
+								toast.success(`管理者 + ${circleMembership.circle?.name || "サークル"}としてログインしました`);
+							} else if (adminMembership) {
+								// event_admin のみの場合
 								saveAuthInfo({
 									circleId: null,
 									eventId: adminMembership.eventId,
@@ -45,6 +69,10 @@ export default function SignInForm({
 									userName: adminMembership.userName,
 									role: "event_admin",
 									membershipId: adminMembership.id,
+									circleName: null,
+									isEventAdmin: true,
+									adminMembershipId: adminMembership.id,
+									adminEventId: adminMembership.eventId,
 								});
 								router.push("/admin");
 								toast.success("管理者としてログインしました");
@@ -56,7 +84,14 @@ export default function SignInForm({
 									userName: circleMembership.userName,
 									role: circleMembership.role,
 									membershipId: circleMembership.id,
+									circleName: circleMembership.circle?.name || null,
 								});
+
+								// サークル名を保存
+								if (circleMembership.circle) {
+									localStorage.setItem("circleName", circleMembership.circle.name);
+								}
+
 								router.push("/dashboard");
 								toast.success(`${circleMembership.userName}さんとしてログインしました`);
 							} else {
@@ -87,8 +122,10 @@ export default function SignInForm({
 	}
 
 	return (
-		<div className="mx-auto w-full mt-10 max-w-md p-6">
-			<h1 className="mb-6 text-center text-3xl font-bold">Welcome Back</h1>
+		<div className="mx-auto w-full mt-sp-3">
+			<h2 className="mb-sp-4 text-center text-[24px] font-headline uppercase tracking-tight leading-[1.1]">
+				Welcome Back
+			</h2>
 
 			<form
 				onSubmit={(e) => {
@@ -96,12 +133,12 @@ export default function SignInForm({
 					e.stopPropagation();
 					form.handleSubmit();
 				}}
-				className="space-y-4"
+				className="space-y-5"
 			>
 				<div>
 					<form.Field name="email">
 						{(field) => (
-							<div className="space-y-2">
+							<div className="space-y-1">
 								<Label htmlFor={field.name}>Email</Label>
 								<Input
 									id={field.name}
@@ -112,7 +149,7 @@ export default function SignInForm({
 									onChange={(e) => field.handleChange(e.target.value)}
 								/>
 								{field.state.meta.errors.map((error) => (
-									<p key={error?.message} className="text-red-500">
+									<p key={error?.message} className="text-error font-mono text-[12px] font-bold mt-[4px]">
 										{error?.message}
 									</p>
 								))}
@@ -124,7 +161,7 @@ export default function SignInForm({
 				<div>
 					<form.Field name="password">
 						{(field) => (
-							<div className="space-y-2">
+							<div className="space-y-1">
 								<Label htmlFor={field.name}>Password</Label>
 								<Input
 									id={field.name}
@@ -135,7 +172,7 @@ export default function SignInForm({
 									onChange={(e) => field.handleChange(e.target.value)}
 								/>
 								{field.state.meta.errors.map((error) => (
-									<p key={error?.message} className="text-red-500">
+									<p key={error?.message} className="text-error font-mono text-[12px] font-bold mt-[4px]">
 										{error?.message}
 									</p>
 								))}
@@ -149,6 +186,7 @@ export default function SignInForm({
 						<Button
 							type="submit"
 							className="w-full"
+							size="lg"
 							disabled={!state.canSubmit || state.isSubmitting}
 						>
 							{state.isSubmitting ? "Submitting..." : "Sign In"}
@@ -157,14 +195,14 @@ export default function SignInForm({
 				</form.Subscribe>
 			</form>
 
-			<div className="mt-4 text-center">
-				<Button
-					variant="link"
+			<div className="mt-sp-4 text-center">
+				<button
+					type="button"
 					onClick={onSwitchToSignUp}
-					className="text-indigo-600 hover:text-indigo-800"
+					className="text-[#0000FF] underline font-mono text-[12px] uppercase tracking-[1px] hover:text-black"
 				>
 					Need an account? Sign Up
-				</Button>
+				</button>
 			</div>
 		</div>
 	);
