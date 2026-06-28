@@ -241,7 +241,7 @@ export function useAuth() {
 
   return {
     ...authInfo,
-    isAuthenticated: !!authInfo?.circleId,
+    isAuthenticated: !!authInfo?.circleId || !!authInfo?.role,
     isLoading,
     login,
     logout,
@@ -333,6 +333,39 @@ export function RoleGuard({
 
   if (!role || !allowedRoles.includes(role)) {
     return <>{fallback}</>;
+  }
+
+  return <>{children}</>;
+}
+
+// 管理者専用認証ガード
+export function AdminAuthGuard({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const { role, isLoading, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && (!isAuthenticated || role !== ROLES.EVENT_ADMIN)) {
+      router.push("/dashboard");
+    }
+  }, [isLoading, isAuthenticated, role, router]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || role !== ROLES.EVENT_ADMIN) {
+    return (
+      <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-center p-4">
+        <h2 className="text-2xl font-bold text-destructive">アクセス権限がありません</h2>
+        <p className="text-muted-foreground">
+          イベント管理機能を利用するには、全体システム管理者（event_admin）アカウントでログインする必要があります。
+        </p>
+      </div>
+    );
   }
 
   return <>{children}</>;

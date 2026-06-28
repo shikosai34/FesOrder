@@ -1,10 +1,12 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { db, membership, inviteToken, circle, event } from "@new-modern-app/db";
+import { db, membership, inviteToken, circle, event, user } from "@new-modern-app/db";
 import { eq, and, inArray, gt } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import bcrypt from "bcryptjs";
+import { auth } from "@new-modern-app/auth";
+import { Context } from "hono";
 
 const membershipRoutes = new Hono();
 
@@ -81,6 +83,78 @@ function hasPermission(role: Role, permission: string): boolean {
   return permissions.includes("*") || permissions.includes(permission);
 }
 
+// 管理者権限チェック（権限の序列チェック）
+async function checkMemberWritePermission(
+  c: Context,
+  targetCircleId: string | null,
+  targetCurrentRole: string,
+  targetNewRole?: string
+) {
+  const session = await auth.api.getSession({
+    headers: c.req.raw.headers,
+  });
+
+  if (!session || !session.user) {
+    return { error: "認証されていません", status: 401 as const };
+  }
+
+  const email = session.user.email.toLowerCase();
+  const initialAdminEmail = process.env.INITIAL_SUPER_ADMIN_EMAIL;
+
+  let isEventAdmin = false;
+  if (initialAdminEmail && email === initialAdminEmail.toLowerCase()) {
+    isEventAdmin = true;
+  } else {
+    const adminMemberships = await db
+      .select()
+      .from(membership)
+      .where(
+        and(
+          eq(membership.userEmail, email),
+          eq(membership.role, "event_admin"),
+          eq(membership.isActive, true)
+        )
+      );
+    if (adminMemberships.length > 0) isEventAdmin = true;
+  }
+
+  if (isEventAdmin) return null; // event_adminは何でも可能
+
+  // event_adminへの昇格、またはevent_adminの変更はevent_adminのみ可能
+  if (targetCurrentRole === "event_admin" || targetNewRole === "event_admin") {
+    return { error: "event_admin権限を操作する権限がありません", status: 403 as const };
+  }
+
+  // イベントレベルのメンバー（circleIdなし）はevent_adminのみ操作可能
+  if (!targetCircleId) {
+    return { error: "イベントレベルのメンバーを操作する権限がありません", status: 403 as const };
+  }
+
+  // circle_manager権限の確認
+  const managerMemberships = await db
+    .select()
+    .from(membership)
+    .where(
+      and(
+        eq(membership.userEmail, email),
+        eq(membership.circleId, targetCircleId),
+        eq(membership.role, "circle_manager"),
+        eq(membership.isActive, true)
+      )
+    );
+
+  if (managerMemberships.length === 0) {
+    return { error: "このサークルのメンバーを管理する権限がありません", status: 403 as const };
+  }
+
+  // circle_managerは一般店員のみ管理可能（circle_manager自身の権限付与や他circle_managerの操作は不可）
+  if (targetCurrentRole === "circle_manager" || targetNewRole === "circle_manager") {
+    return { error: "circle_manager権限を操作する権限がありません", status: 403 as const };
+  }
+
+  return null;
+}
+
 // ロール一覧取得
 membershipRoutes.get("/roles", (c) => {
   return c.json(
@@ -99,11 +173,35 @@ membershipRoutes.get("/my", async (c) => {
     return c.json({ error: "userEmailが必要です" }, 400);
   }
 
+  const initialAdminEmail = process.env.INITIAL_SUPER_ADMIN_EMAIL;
+  if (initialAdminEmail && userEmail.toLowerCase() === initialAdminEmail.toLowerCase()) {
+    const existingAdmin = await db
+      .select()
+      .from(membership)
+      .where(
+        and(
+          eq(membership.userEmail, userEmail.toLowerCase()),
+          eq(membership.role, "event_admin"),
+          eq(membership.isActive, true)
+        )
+      );
+
+    if (existingAdmin.length === 0) {
+      await db.insert(membership).values({
+        id: nanoid(),
+        userEmail: userEmail.toLowerCase(),
+        userName: "Super Admin",
+        role: "event_admin",
+        isActive: true,
+      });
+    }
+  }
+
   const memberships = await db
     .select()
     .from(membership)
     .where(
-      and(eq(membership.userEmail, userEmail), eq(membership.isActive, true))
+      and(eq(membership.userEmail, userEmail.toLowerCase()), eq(membership.isActive, true))
     );
 
   // サークルとイベント情報を取得
@@ -231,6 +329,9 @@ membershipRoutes.post(
     const input = c.req.valid("json");
     const id = nanoid();
 
+    const err = await checkMemberWritePermission(c, input.circleId || null, "viewer", input.role);
+    if (err) return c.json({ error: err.error }, err.status);
+
     // PINをハッシュ化
     let pinHash: string | null = null;
     if (input.pin) {
@@ -265,6 +366,13 @@ membershipRoutes.patch(
     const id = c.req.param("id");
     const input = c.req.valid("json");
 
+    const targets = await db.select().from(membership).where(eq(membership.id, id));
+    if (targets.length === 0) return c.json({ error: "メンバーが見つかりません" }, 404);
+    
+    const target = targets[0]!;
+    const err = await checkMemberWritePermission(c, target.circleId, target.role, input.role);
+    if (err) return c.json({ error: err.error }, err.status);
+
     await db
       .update(membership)
       .set({ role: input.role })
@@ -278,6 +386,13 @@ membershipRoutes.patch(
 membershipRoutes.patch("/:id/deactivate", async (c) => {
   const id = c.req.param("id");
 
+  const targets = await db.select().from(membership).where(eq(membership.id, id));
+  if (targets.length === 0) return c.json({ error: "メンバーが見つかりません" }, 404);
+  
+  const target = targets[0]!;
+  const err = await checkMemberWritePermission(c, target.circleId, target.role);
+  if (err) return c.json({ error: err.error }, err.status);
+
   await db
     .update(membership)
     .set({ isActive: false })
@@ -289,6 +404,13 @@ membershipRoutes.patch("/:id/deactivate", async (c) => {
 // メンバー削除
 membershipRoutes.delete("/:id", async (c) => {
   const id = c.req.param("id");
+
+  const targets = await db.select().from(membership).where(eq(membership.id, id));
+  if (targets.length === 0) return c.json({ error: "メンバーが見つかりません" }, 404);
+  
+  const target = targets[0]!;
+  const err = await checkMemberWritePermission(c, target.circleId, target.role);
+  if (err) return c.json({ error: err.error }, err.status);
 
   await db.delete(membership).where(eq(membership.id, id));
 
@@ -313,6 +435,9 @@ membershipRoutes.post(
     const input = c.req.valid("json");
     const id = nanoid();
     const token = nanoid(32);
+
+    const err = await checkMemberWritePermission(c, input.circleId || null, "viewer", input.role);
+    if (err) return c.json({ error: err.error }, err.status);
 
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + input.expiresInHours);
@@ -453,6 +578,13 @@ membershipRoutes.get("/invite/list", async (c) => {
 membershipRoutes.delete("/invite/:id", async (c) => {
   const id = c.req.param("id");
 
+  const tokens = await db.select().from(inviteToken).where(eq(inviteToken.id, id));
+  if (tokens.length === 0) return c.json({ error: "トークンが見つかりません" }, 404);
+
+  const targetToken = tokens[0]!;
+  const err = await checkMemberWritePermission(c, targetToken.circleId, "viewer");
+  if (err) return c.json({ error: err.error }, err.status);
+
   await db.delete(inviteToken).where(eq(inviteToken.id, id));
 
   return c.json({ success: true });
@@ -466,6 +598,7 @@ membershipRoutes.post(
     z.object({
       circleId: z.string().optional(),
       eventId: z.string().optional(),
+      email: z.string().email().optional(),
       pin: z.string(),
     })
   ),
@@ -475,25 +608,29 @@ membershipRoutes.post(
     // メンバーシップを検索
     let query;
     if (input.circleId) {
+      const conditions = [
+        eq(membership.circleId, input.circleId),
+        eq(membership.isActive, true)
+      ];
+      if (input.email) {
+        conditions.push(eq(membership.userEmail, input.email.toLowerCase()));
+      }
       query = db
         .select()
         .from(membership)
-        .where(
-          and(
-            eq(membership.circleId, input.circleId),
-            eq(membership.isActive, true)
-          )
-        );
+        .where(and(...conditions));
     } else if (input.eventId) {
+      const conditions = [
+        eq(membership.eventId, input.eventId),
+        eq(membership.isActive, true)
+      ];
+      if (input.email) {
+        conditions.push(eq(membership.userEmail, input.email.toLowerCase()));
+      }
       query = db
         .select()
         .from(membership)
-        .where(
-          and(
-            eq(membership.eventId, input.eventId),
-            eq(membership.isActive, true)
-          )
-        );
+        .where(and(...conditions));
     } else {
       return c.json({ error: "circleIdまたはeventIdが必要です" }, 400);
     }
@@ -505,12 +642,32 @@ membershipRoutes.post(
       if (m.pin) {
         const isValid = await bcrypt.compare(input.pin, m.pin);
         if (isValid) {
+          // 該当メンバーシップの user テーブルのレコードを検索
+          const users = await db
+            .select()
+            .from(user)
+            .where(eq(user.email, m.userEmail.toLowerCase()));
+          
+          const matchedUser = users[0];
+
           return c.json({
             success: true,
             membership: {
               ...m,
               pin: undefined,
             },
+            // user が見つからない場合は、名前とメールの一時オブジェクトを組み立てて返す
+            user: matchedUser
+              ? {
+                  id: matchedUser.id,
+                  name: matchedUser.name,
+                  email: matchedUser.email,
+                }
+              : {
+                  id: m.id, // 一時的なIDとしてmembership IDを使用
+                  name: m.userName,
+                  email: m.userEmail,
+                },
           });
         }
       }
@@ -532,6 +689,24 @@ membershipRoutes.patch(
   async (c) => {
     const id = c.req.param("id");
     const input = c.req.valid("json");
+
+    const targets = await db.select().from(membership).where(eq(membership.id, id));
+    if (targets.length === 0) return c.json({ error: "メンバーが見つかりません" }, 404);
+    
+    const target = targets[0]!;
+
+    // 権限チェック: 自分自身か、管理者（circle_manager or event_admin）のみPINを変更可能
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    if (!session || !session.user) {
+      return c.json({ error: "認証されていません" }, 401);
+    }
+    
+    const isSelf = session.user.email.toLowerCase() === target.userEmail.toLowerCase();
+    
+    if (!isSelf) {
+      const err = await checkMemberWritePermission(c, target.circleId, target.role);
+      if (err) return c.json({ error: err.error }, err.status);
+    }
 
     const pinHash = await bcrypt.hash(input.pin, 10);
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { eventApi, circleApi } from "@/lib/api";
+import { AdminAuthGuard } from "@/hooks/useCircleAuth";
 import {
   Card,
   CardContent,
@@ -213,7 +214,8 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-8">
+    <AdminAuthGuard>
+      <div className="container mx-auto p-6 space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
@@ -713,5 +715,6 @@ export default function AdminPage() {
         )}
       </div>
     </div>
+  </AdminAuthGuard>
   );
 }

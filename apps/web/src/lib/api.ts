@@ -544,6 +544,7 @@ export interface AcceptInviteInput {
 export interface PinAuthInput {
   circleId?: string;
   eventId?: string;
+  email?: string;
   pin: string;
 }
 

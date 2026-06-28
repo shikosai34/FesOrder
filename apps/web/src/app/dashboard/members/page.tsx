@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 
 function MembersContent() {
-  const { circleId } = useAuth();
+  const { circleId, role } = useAuth();
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
   const [showInviteForm, setShowInviteForm] = useState(false);
@@ -238,7 +238,18 @@ function MembersContent() {
                     })
                   }
                 >
-                  {Object.entries(ROLES).map(([key, value]) => (
+                  {Object.entries(ROLES)
+                    .filter(([key, value]) => {
+                      if (role === ROLES.EVENT_ADMIN) return true;
+                      return [
+                        ROLES.CASHIER,
+                        ROLES.KITCHEN_STAFF,
+                        ROLES.WAITER,
+                        ROLES.STOCK_MANAGER,
+                        ROLES.VIEWER,
+                      ].includes(value as RoleType);
+                    })
+                    .map(([key, value]) => (
                     <option key={value} value={value}>
                       {ROLE_NAMES[value]}
                     </option>
@@ -301,7 +312,18 @@ function MembersContent() {
                     })
                   }
                 >
-                  {Object.entries(ROLES).map(([key, value]) => (
+                  {Object.entries(ROLES)
+                    .filter(([key, value]) => {
+                      if (role === ROLES.EVENT_ADMIN) return true;
+                      return [
+                        ROLES.CASHIER,
+                        ROLES.KITCHEN_STAFF,
+                        ROLES.WAITER,
+                        ROLES.STOCK_MANAGER,
+                        ROLES.VIEWER,
+                      ].includes(value as RoleType);
+                    })
+                    .map(([key, value]) => (
                     <option key={value} value={value}>
                       {ROLE_NAMES[value]}
                     </option>

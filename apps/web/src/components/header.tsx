@@ -61,7 +61,7 @@ export default function Header() {
       permission: "circle:read",
       icon: LayoutDashboard,
     },
-    { to: "/admin", label: "管理者", permission: null, icon: Settings },
+    { to: "/admin", label: "管理者", permission: "event:write", icon: Settings },
   ];
 
   const links = allLinks.filter(

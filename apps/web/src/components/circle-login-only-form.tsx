@@ -69,6 +69,7 @@ export default function CircleLoginOnlyForm() {
       const result = await membershipApi.authenticateWithPin({
         circleId: input.circleId,
         pin: input.pin,
+        email: input.userEmail,
       });
       if (!result.success || !result.membership || !result.user) {
         throw new Error("認証に失敗しました");
