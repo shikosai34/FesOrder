@@ -137,3 +137,6 @@ black fill, white, 13px, Space Mono text, square, none (inverted block) border, 
 8. **Do** use uppercase + tracking for buttons and labels to amplify the raw aesthetic.
 9. **Don't** add decorative images, icons, or illustrations; content and typography do the work.
 10. **Don't** polish or refine; if something looks too "designed," strip it back further.
+
+---
+※ This design system is based on RawBlock Design System (MIT License) by https://designmd.ai/chef/rawblock
