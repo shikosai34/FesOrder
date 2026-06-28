@@ -86,8 +86,8 @@ export default function Header() {
   };
 
   return (
-    <div>
-      <div className="flex flex-row items-center justify-between px-4 py-2">
+    <div className="sticky top-0 z-50 glass border-b border-border/50">
+      <div className="flex flex-row items-center justify-between px-4 py-3">
         <nav className="flex gap-4 text-lg items-center">
           {links.map(({ to, label, icon: Icon }) => {
             return (
@@ -153,7 +153,6 @@ export default function Header() {
           <UserMenu />
         </div>
       </div>
-      <hr />
     </div>
   );
 }

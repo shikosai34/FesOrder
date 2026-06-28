@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db, menu, menuTopping, topping } from "@new-modern-app/db";
 import { eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { hasPermission } from "../utils/auth";
 
 const menuRoutes = new Hono();
 
@@ -104,6 +105,11 @@ menuRoutes.post(
   ),
   async (c) => {
     const input = c.req.valid("json");
+
+    if (!(await hasPermission(c, input.circleId, "menu:write"))) {
+      return c.json({ error: "権限がありません" }, 403);
+    }
+
     const id = nanoid();
 
     await db.insert(menu).values({
@@ -153,6 +159,14 @@ menuRoutes.put(
     const id = c.req.param("id");
     const input = c.req.valid("json");
 
+    // Get circleId first
+    const existingMenu = await db.select().from(menu).where(eq(menu.id, id));
+    if (existingMenu.length === 0) return c.json({ error: "見つかりません" }, 404);
+    
+    if (!(await hasPermission(c, existingMenu[0]!.circleId, "menu:write"))) {
+      return c.json({ error: "権限がありません" }, 403);
+    }
+
     const updates: Partial<typeof menu.$inferSelect> = {};
 
     if (input.name !== undefined) updates.name = input.name;
@@ -195,6 +209,13 @@ menuRoutes.put(
 menuRoutes.delete("/:id", async (c) => {
   const id = c.req.param("id");
 
+  const existingMenu = await db.select().from(menu).where(eq(menu.id, id));
+  if (existingMenu.length === 0) return c.json({ error: "見つかりません" }, 404);
+  
+  if (!(await hasPermission(c, existingMenu[0]!.circleId, "menu:delete"))) {
+    return c.json({ error: "権限がありません" }, 403);
+  }
+
   // トッピング関連を削除
   await db.delete(menuTopping).where(eq(menuTopping.menuId, id));
 
@@ -216,6 +237,13 @@ menuRoutes.patch(
   async (c) => {
     const id = c.req.param("id");
     const input = c.req.valid("json");
+
+    const existingMenu = await db.select().from(menu).where(eq(menu.id, id));
+    if (existingMenu.length === 0) return c.json({ error: "見つかりません" }, 404);
+    
+    if (!(await hasPermission(c, existingMenu[0]!.circleId, "stock:write"))) {
+      return c.json({ error: "権限がありません" }, 403);
+    }
 
     await db
       .update(menu)

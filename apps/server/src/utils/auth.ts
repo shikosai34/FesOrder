@@ -3,6 +3,14 @@ import { db, membership } from "@new-modern-app/db";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { Context } from "hono";
+import { ROLE_PERMISSIONS, type Permission } from "@new-modern-app/db";
+
+export async function getSession(c: Context) {
+  return await auth.api.getSession({
+    headers: c.req.raw.headers,
+  });
+}
+
 
 export async function getAdminSession(c: Context) {
   // Better Auth からセッションを取得
@@ -60,4 +68,42 @@ export async function getAdminSession(c: Context) {
   }
 
   return session;
+}
+
+export async function hasPermission(
+  c: Context,
+  circleId: string,
+  requiredPermission: Permission
+): Promise<boolean> {
+  const session = await getSession(c);
+  if (!session || !session.user) return false;
+
+  const email = session.user.email;
+
+  // Check if they are event_admin (either via INITIAL_SUPER_ADMIN_EMAIL or db)
+  const adminSession = await getAdminSession(c);
+  if (adminSession) {
+    return true; // event_admin has all permissions
+  }
+
+  // Check specific circle membership
+  const members = await db
+    .select()
+    .from(membership)
+    .where(
+      and(
+        eq(membership.userEmail, email),
+        eq(membership.circleId, circleId),
+        eq(membership.isActive, true)
+      )
+    );
+
+  if (members.length === 0) return false;
+
+  // Check permissions based on role
+  const role = members[0]!.role as keyof typeof ROLE_PERMISSIONS;
+  if (!role || !ROLE_PERMISSIONS[role]) return false;
+
+  const permissions = ROLE_PERMISSIONS[role];
+  return (permissions as readonly string[]).includes(requiredPermission);
 }

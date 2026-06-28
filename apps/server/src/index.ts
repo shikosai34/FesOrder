@@ -16,6 +16,7 @@ import {
   staffRoutes,
   orderRoutes,
   membershipRoutes,
+  stampRoutes,
 } from "./routes";
 
 const app = new Hono();
@@ -42,6 +43,7 @@ app.route("/api/toppings", toppingRoutes);
 app.route("/api/staff", staffRoutes);
 app.route("/api/orders", orderRoutes);
 app.route("/api/memberships", membershipRoutes);
+app.route("/api/stamps", stampRoutes);
 
 // 画像アップロードエンドポイント
 app.post("/api/upload", async (c) => {

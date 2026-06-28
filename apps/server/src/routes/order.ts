@@ -8,9 +8,11 @@ import {
   orderItemTopping,
   menu,
   topping,
+  userStamp,
 } from "@new-modern-app/db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { hasPermission } from "../utils/auth";
 
 const orderRoutes = new Hono();
 
@@ -176,6 +178,7 @@ orderRoutes.post(
     z.object({
       circleId: z.string(),
       cashierId: z.string().optional(),
+      userId: z.string().optional(), // ゲストID
       peopleCount: z.number().min(1).default(1),
       items: z.array(
         z.object({
@@ -257,6 +260,7 @@ orderRoutes.post(
         id: orderId,
         circleId: input.circleId,
         cashierId: input.cashierId,
+        userId: input.userId, // ゲストIDを保存
         orderNumber,
         peopleCount: input.peopleCount,
         status: "pending",
@@ -325,6 +329,34 @@ orderRoutes.patch(
     const id = c.req.param("id");
     const input = c.req.valid("json");
 
+    const existingOrder = await db.select().from(order).where(eq(order.id, id));
+    if (existingOrder.length === 0) return c.json({ error: "見つかりません" }, 404);
+    
+    const targetOrder = existingOrder[0]!;
+
+    if (!(await hasPermission(c, targetOrder.circleId, "order:write"))) {
+      return c.json({ error: "権限がありません" }, 403);
+    }
+
+    // pending -> preparing に変わった場合、スタンプを付与
+    if (targetOrder.status === "pending" && input.status === "preparing" && targetOrder.userId) {
+      // 既にスタンプを獲得しているか確認
+      const existingStamp = await db.select().from(userStamp).where(
+        and(
+          eq(userStamp.userId, targetOrder.userId),
+          eq(userStamp.circleId, targetOrder.circleId)
+        )
+      );
+
+      if (existingStamp.length === 0) {
+        await db.insert(userStamp).values({
+          id: nanoid(),
+          userId: targetOrder.userId,
+          circleId: targetOrder.circleId,
+        });
+      }
+    }
+
     await db
       .update(order)
       .set({ status: input.status })
@@ -337,6 +369,15 @@ orderRoutes.patch(
 // 注文完了
 orderRoutes.post("/:id/complete", async (c) => {
   const id = c.req.param("id");
+
+  const existingOrder = await db.select().from(order).where(eq(order.id, id));
+  if (existingOrder.length === 0) return c.json({ error: "見つかりません" }, 404);
+  
+  const targetOrder = existingOrder[0]!;
+
+  if (!(await hasPermission(c, targetOrder.circleId, "order:write"))) {
+    return c.json({ error: "権限がありません" }, 403);
+  }
 
   await db
     .update(order)
@@ -359,6 +400,15 @@ orderRoutes.patch(
     const id = c.req.param("id");
     const input = c.req.valid("json");
 
+    const existingOrder = await db.select().from(order).where(eq(order.id, id));
+    if (existingOrder.length === 0) return c.json({ error: "見つかりません" }, 404);
+    
+    const targetOrder = existingOrder[0]!;
+
+    if (!(await hasPermission(c, targetOrder.circleId, "order:write"))) {
+      return c.json({ error: "権限がありません" }, 403);
+    }
+
     await db
       .update(order)
       .set({ estimatedTime: input.estimatedTime })
@@ -376,6 +426,10 @@ orderRoutes.get("/stats/sales", async (c) => {
 
   if (!circleId) {
     return c.json({ error: "circleIdが必要です" }, 400);
+  }
+
+  if (!(await hasPermission(c, circleId, "sales:read"))) {
+    return c.json({ error: "権限がありません" }, 403);
   }
 
   let query = db

@@ -197,22 +197,22 @@ function RegisterPageContent() {
             {menus?.map((menu) => (
               <Card key={menu.id} className={menu.soldOut ? "opacity-60" : ""}>
                 <CardHeader>
-                  <div className="relative h-32 w-full rounded-t-lg overflow-hidden">
+                  <div className="relative h-40 w-full overflow-hidden">
                     {menu.imagePath ? (
                       <Image
                         src={menu.imagePath}
                         alt={menu.name}
                         fill
-                        className="object-cover"
+                        className="object-cover transition-transform duration-500 hover:scale-105"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-muted">
-                        <span className="text-muted-foreground">No Image</span>
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                        <span className="text-muted-foreground/50 font-medium">No Image</span>
                       </div>
                     )}
                     {menu.soldOut && (
-                      <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
-                        <span className="text-white font-bold">売り切れ</span>
+                      <div className="absolute top-2 right-2 bg-destructive/90 text-destructive-foreground px-3 py-1 rounded-full text-sm font-bold shadow-sm backdrop-blur-sm">
+                        売り切れ
                       </div>
                     )}
                   </div>
@@ -245,8 +245,8 @@ function RegisterPageContent() {
 
         {/* カート */}
         <div className="lg:col-span-1">
-          <Card className="sticky top-4">
-            <CardHeader>
+          <Card className="sticky top-20 glass-card border-primary/20 shadow-lg h-[calc(100vh-6rem)] flex flex-col">
+            <CardHeader className="bg-primary/5 pb-4 border-b">
               <CardTitle className="flex items-center">
                 <ShoppingCart className="mr-2 h-5 w-5" />
                 カート
@@ -255,16 +255,17 @@ function RegisterPageContent() {
             </CardHeader>
             <CardContent className="space-y-4">
               {cart.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  カートが空です
-                </p>
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <ShoppingCart className="h-16 w-16 mb-4 opacity-20" />
+                  <p>カートが空です</p>
+                </div>
               ) : (
                 <>
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                  <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
                     {cart.map((item) => (
                       <div
                         key={item.menuId}
-                        className="border rounded-lg p-3 space-y-2"
+                        className="bg-card border rounded-xl p-4 space-y-3 shadow-sm hover:shadow-md transition-shadow relative"
                       >
                         <div className="flex justify-between items-start">
                           <div>
@@ -315,24 +316,26 @@ function RegisterPageContent() {
                         )}
 
                         {/* 数量調整 */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
+                        <div className="flex items-center justify-between pt-2">
+                          <div className="flex items-center space-x-3 bg-secondary/50 rounded-lg p-1">
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="icon"
+                              className="h-10 w-10 rounded-md hover:bg-background"
                               onClick={() => updateQuantity(item.menuId, -1)}
                             >
-                              <Minus className="h-4 w-4" />
+                              <Minus className="h-5 w-5" />
                             </Button>
-                            <span className="font-semibold w-8 text-center">
+                            <span className="font-bold text-lg w-8 text-center tabular-nums">
                               {item.quantity}
                             </span>
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="icon"
+                              className="h-10 w-10 rounded-md hover:bg-background"
                               onClick={() => updateQuantity(item.menuId, 1)}
                             >
-                              <Plus className="h-4 w-4" />
+                              <Plus className="h-5 w-5" />
                             </Button>
                           </div>
                           <p className="font-semibold">
@@ -352,31 +355,31 @@ function RegisterPageContent() {
                   </div>
 
                   {/* 人数入力 */}
-                  <div className="space-y-2">
-                    <Label htmlFor="peopleCount">人数</Label>
+                  <div className="space-y-2 bg-secondary/20 p-4 rounded-xl mt-4">
+                    <Label htmlFor="peopleCount" className="text-sm font-bold">来店人数</Label>
                     <Input
                       id="peopleCount"
                       type="number"
                       min="1"
+                      className="text-lg text-center font-bold h-12"
                       value={peopleCount}
                       onChange={(e) => setPeopleCount(Number(e.target.value))}
                     />
                   </div>
 
                   {/* 合計金額 */}
-                  <div className="border-t pt-4">
-                    <div className="flex justify-between text-xl font-bold">
-                      <span>合計</span>
-                      <span>¥{getTotalPrice().toLocaleString()}</span>
+                  <div className="border-t pt-4 mt-2">
+                    <div className="flex justify-between items-end text-xl">
+                      <span className="text-muted-foreground font-medium">合計金額</span>
+                      <span className="text-3xl font-black text-primary">¥{getTotalPrice().toLocaleString()}</span>
                     </div>
                   </div>
                 </>
               )}
             </CardContent>
-            <CardFooter className="flex flex-col gap-2">
+            <CardFooter className="flex flex-col gap-3 bg-background/50 backdrop-blur-md pt-4 border-t mt-auto rounded-b-xl">
               <Button
-                className="w-full"
-                size="lg"
+                className="w-full h-14 text-lg font-bold rounded-xl shadow-lg shadow-primary/20"
                 onClick={handleSubmitOrder}
                 disabled={cart.length === 0 || createOrder.isPending}
               >

@@ -210,6 +210,7 @@ export const order = sqliteTable(
   "orders",
   {
     id: text("id").primaryKey(),
+    userId: text("user_id"), // ゲストの匿名ID (スタンプラリー用)
     circleId: text("circle_id")
       .notNull()
       .references(() => circle.id, { onDelete: "cascade" }),
@@ -494,3 +495,51 @@ export const inviteTokenRelations = relations(inviteToken, ({ one }) => ({
     references: [event.id],
   }),
 }));
+
+// スタンプテーブル
+export const userStamp = sqliteTable(
+  "user_stamp",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(), // ゲストの匿名ID
+    circleId: text("circle_id")
+      .notNull()
+      .references(() => circle.id, { onDelete: "cascade" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [
+    index("user_stamp_userId_idx").on(table.userId),
+    index("user_stamp_circleId_idx").on(table.circleId),
+    uniqueIndex("user_stamp_user_circle_unique").on(
+      table.userId,
+      table.circleId
+    ),
+  ]
+);
+
+// 景品交換テーブル
+export const rewardRedemption = sqliteTable(
+  "reward_redemption",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull().unique(), // 1人1回まで
+    staffId: text("staff_id").notNull(), // 交換を対応したスタッフのIDまたはメール
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [
+    index("reward_redemption_userId_idx").on(table.userId),
+  ]
+);
+
+// スタンプのリレーション
+export const userStampRelations = relations(userStamp, ({ one }) => ({
+  circle: one(circle, {
+    fields: [userStamp.circleId],
+    references: [circle.id],
+  }),
+}));
+

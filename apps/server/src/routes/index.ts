@@ -5,6 +5,7 @@ import toppingRoutes from "./topping";
 import staffRoutes from "./staff";
 import orderRoutes from "./order";
 import membershipRoutes from "./membership";
+import stampRoutes from "./stamp";
 
 export {
   eventRoutes,
@@ -14,4 +15,5 @@ export {
   staffRoutes,
   orderRoutes,
   membershipRoutes,
+  stampRoutes,
 };

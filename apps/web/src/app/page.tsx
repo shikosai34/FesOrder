@@ -50,28 +50,35 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-[calc(100vh-4rem)] relative overflow-hidden bg-gradient-to-br from-background via-background to-primary/5">
+      {/* 抽象的な背景装飾 */}
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary/20 rounded-full blur-[120px] -z-10 mix-blend-multiply dark:mix-blend-screen opacity-50 animate-in fade-in duration-1000"></div>
+      <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-500/20 rounded-full blur-[100px] -z-10 mix-blend-multiply dark:mix-blend-screen opacity-50 animate-in fade-in duration-1000 delay-300"></div>
+
       {/* ヒーローセクション */}
-      <section className="container mx-auto px-4 py-20 text-center">
-        <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+      <section className="container mx-auto px-4 py-28 text-center animate-in slide-in-from-bottom-8 fade-in duration-700">
+        <div className="inline-block mb-4 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/10 text-primary font-medium text-sm">
+          次世代の学園祭体験を
+        </div>
+        <h1 className="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent drop-shadow-sm">
           学園祭注文システム
         </h1>
-        <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-          学園祭での注文管理を、もっとスマートに、もっとスムーズに
+        <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
+          学園祭での注文管理を、もっとスマートに、もっとスムーズに。
         </p>
         <div className="flex gap-4 justify-center flex-wrap">
           <Link href="/circle-login">
-            <Button size="lg" className="text-lg">
+            <Button size="lg" className="text-lg rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow">
               ログインして始める
             </Button>
           </Link>
           <Link href="/menu">
-            <Button size="lg" variant="outline" className="text-lg">
+            <Button size="lg" variant="outline" className="text-lg rounded-full glass hover:bg-background/80">
               メニューを見る
             </Button>
           </Link>
           <Link href="/admin">
-            <Button size="lg" variant="ghost" className="text-lg">
+            <Button size="lg" variant="ghost" className="text-lg rounded-full">
               <Shield className="mr-2 h-5 w-5" />
               管理者
             </Button>
@@ -80,27 +87,29 @@ export default function Home() {
       </section>
 
       {/* 機能紹介 */}
-      <section className="container mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-center mb-12">主な機能</h2>
+      <section className="container mx-auto px-4 py-20 relative z-10">
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 tracking-tight">主な機能</h2>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {features.map((feature) => {
+          {features.map((feature, idx) => {
             const Icon = feature.icon;
             return (
               <Card
                 key={feature.title}
-                className="hover:shadow-lg transition-shadow"
+                className="glass-card border-none bg-background/40 hover:-translate-y-1 duration-300 animate-in fade-in slide-in-from-bottom-8"
+                style={{ animationDelay: `${idx * 150}ms`, animationFillMode: 'both' }}
               >
                 <CardHeader>
-                  <div className={`mb-4 ${feature.color}`}>
-                    <Icon className="h-12 w-12" />
+                  <div className={`mb-5 p-3 rounded-2xl w-fit ${feature.color.replace('text-', 'bg-').replace('-500', '-500/10')} ${feature.color}`}>
+                    <Icon className="h-8 w-8" />
                   </div>
-                  <CardTitle>{feature.title}</CardTitle>
-                  <CardDescription>{feature.description}</CardDescription>
+                  <CardTitle className="text-xl">{feature.title}</CardTitle>
+                  <CardDescription className="text-base">{feature.description}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Link href={feature.href as any}>
-                    <Button variant="ghost" className="w-full">
-                      詳しく見る →
+                  <Link href={feature.href as any} className="block mt-2">
+                    <Button variant="ghost" className="w-full justify-between group">
+                      詳しく見る
+                      <span className="transition-transform group-hover:translate-x-1">→</span>
                     </Button>
                   </Link>
                 </CardContent>
@@ -111,31 +120,32 @@ export default function Home() {
       </section>
 
       {/* 特徴 */}
-      <section className="bg-secondary/30 py-16">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">
+      <section className="py-24 relative overflow-hidden">
+        <div className="absolute inset-0 bg-primary/5 skew-y-3 origin-bottom-right -z-10"></div>
+        <div className="container mx-auto px-4 z-10 relative">
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 tracking-tight">
             システムの特徴
           </h2>
-          <div className="grid gap-8 md:grid-cols-3 max-w-4xl mx-auto">
-            <div className="text-center">
-              <div className="text-4xl mb-4">⚡</div>
-              <h3 className="text-xl font-semibold mb-2">高速処理</h3>
-              <p className="text-muted-foreground">
-                注文から完成まで、スムーズな情報共有でタイムラグを最小化
+          <div className="grid gap-10 md:grid-cols-3 max-w-5xl mx-auto">
+            <div className="text-center group">
+              <div className="text-5xl mb-6 transition-transform group-hover:scale-110 duration-300">⚡</div>
+              <h3 className="text-xl font-semibold mb-3">圧倒的なスピード</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                注文から完成まで、リアルタイムな情報共有でタイムラグを最小化し、行列を解消します。
               </p>
             </div>
-            <div className="text-center">
-              <div className="text-4xl mb-4">📱</div>
-              <h3 className="text-xl font-semibold mb-2">マルチデバイス対応</h3>
-              <p className="text-muted-foreground">
-                スマホ、タブレット、PCどの端末からでも利用可能
+            <div className="text-center group">
+              <div className="text-5xl mb-6 transition-transform group-hover:scale-110 duration-300">📱</div>
+              <h3 className="text-xl font-semibold mb-3">マルチデバイス対応</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                スマホ、タブレット、PC。どの端末からでも専用アプリ不要でブラウザからすぐに利用可能です。
               </p>
             </div>
-            <div className="text-center">
-              <div className="text-4xl mb-4">🔄</div>
-              <h3 className="text-xl font-semibold mb-2">リアルタイム更新</h3>
-              <p className="text-muted-foreground">
-                在庫や注文状況を自動で同期し、常に最新の情報を表示
+            <div className="text-center group">
+              <div className="text-5xl mb-6 transition-transform group-hover:scale-110 duration-300">🔄</div>
+              <h3 className="text-xl font-semibold mb-3">リアルタイム更新</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                在庫や注文状況を自動で同期。売り切れや待ち時間の変動も即座に来場者へ伝わります。
               </p>
             </div>
           </div>
@@ -143,16 +153,18 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="container mx-auto px-4 py-20 text-center">
-        <h2 className="text-3xl font-bold mb-6">今すぐ始めましょう</h2>
-        <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-          イベント名とサークル名でログインして、システムを利用開始
-        </p>
-        <Link href="/circle-login">
-          <Button size="lg" className="text-lg">
-            ログイン画面へ →
-          </Button>
-        </Link>
+      <section className="container mx-auto px-4 py-24 text-center">
+        <div className="glass-card max-w-3xl mx-auto p-12 rounded-3xl border border-primary/10 bg-primary/5">
+          <h2 className="text-3xl font-bold mb-6">今すぐ始めましょう</h2>
+          <p className="text-xl text-muted-foreground mb-8">
+            イベント名とサークル名を選択し、PINコードで簡単にログインできます。
+          </p>
+          <Link href="/circle-login">
+            <Button size="lg" className="text-lg rounded-full px-8 py-6 h-auto shadow-lg hover:shadow-primary/30 transition-all hover:scale-105">
+              ログイン画面へ進む
+            </Button>
+          </Link>
+        </div>
       </section>
     </div>
   );
