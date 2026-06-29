@@ -3,11 +3,12 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   typedRoutes: true,
   reactCompiler: true,
+  allowedDevOrigins: ["172.20.10.3", "localhost:3000"],
   async rewrites() {
     return [
       {
-        source: "/api/auth/:path*",
-        destination: "http://localhost:3001/api/auth/:path*",
+        source: "/api/:path*",
+        destination: "http://localhost:3001/api/:path*",
       },
       {
         source: "/trpc/:path*",

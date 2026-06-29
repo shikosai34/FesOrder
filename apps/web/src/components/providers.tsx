@@ -10,17 +10,13 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="light"
-      forcedTheme="light"
-      disableTransitionOnChange
-    >
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
         {children}
         <ReactQueryDevtools />
-      </QueryClientProvider>
+      </ThemeProvider>
       <Toaster richColors />
-    </ThemeProvider>
+    </QueryClientProvider>
   );
 }
+

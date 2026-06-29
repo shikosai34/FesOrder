@@ -123,6 +123,7 @@ export const PERMISSION_NAMES: Record<string, string> = {
 
 // 認証情報の型
 interface AuthInfo {
+  userId?: string | null;
   circleId: string | null;
   eventId: string | null;
   userEmail: string | null;
@@ -135,6 +136,7 @@ interface AuthInfo {
   adminMembershipId?: string | null;
   adminEventId?: string | null;
 }
+
 
 // LocalStorageのキー
 const AUTH_STORAGE_KEY = "circleAuth";

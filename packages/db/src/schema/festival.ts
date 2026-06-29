@@ -102,6 +102,18 @@ export const event = sqliteTable("event", {
   description: text("description"),
   startDate: integer("start_date", { mode: "timestamp_ms" }),
   endDate: integer("end_date", { mode: "timestamp_ms" }),
+  // テーマパック用カラム
+  logoUrl: text("logo_url"),
+  fontFamily: text("font_family").default("mono"),
+  customFontUrl: text("custom_font_url"),
+  primaryColor: text("primary_color").default("#000000"),
+  primaryTextColor: text("primary_text_color").default("#FFFFFF"),
+  accentColor: text("accent_color").default("#0000FF"),
+  accentTextColor: text("accent_text_color").default("#FFFFFF"),
+  backgroundColor: text("background_color").default("#FFFFFF"),
+  textColor: text("text_color").default("#000000"),
+
+
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
@@ -110,6 +122,7 @@ export const event = sqliteTable("event", {
     .$onUpdate(() => new Date())
     .notNull(),
 });
+
 
 // サークルテーブル
 export const circle = sqliteTable(
@@ -542,4 +555,145 @@ export const userStampRelations = relations(userStamp, ({ one }) => ({
     references: [circle.id],
   }),
 }));
+
+// ==========================================
+// ユーザー・リストバンド・事前オーダー関連定義
+// ==========================================
+
+// イベント来場ユーザーテーブル
+export const eventUser = sqliteTable(
+  "event_user",
+  {
+    id: text("id").primaryKey(),
+    eventId: text("event_id")
+      .notNull()
+      .references(() => event.id, { onDelete: "cascade" }),
+    displayId: integer("display_id").notNull(), // 表示用呼出ID (1, 2, 3...)
+    status: text("status").notNull().default("available"), // available / banned
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("event_user_eventId_idx").on(table.eventId),
+    uniqueIndex("event_user_event_display_unique").on(
+      table.eventId,
+      table.displayId
+    ),
+  ]
+);
+
+// リストバンド管理テーブル (ユーザーとリストバンドの1:N紐付け)
+export const wristband = sqliteTable(
+  "wristband",
+  {
+    id: text("id").primaryKey(), // リストバンドの物理コード / QR値
+    userId: text("user_id")
+      .notNull()
+      .references(() => eventUser.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("active"), // active / lost / replaced / revoked
+    assignedAt: integer("assigned_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    deactivatedAt: integer("deactivated_at", { mode: "timestamp_ms" }),
+  },
+  (table) => [
+    index("wristband_userId_idx").on(table.userId),
+    index("wristband_status_idx").on(table.status),
+  ]
+);
+
+// 事前オーダーテーブル
+export const preOrder = sqliteTable(
+  "pre_order",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => eventUser.id, { onDelete: "cascade" }),
+    circleId: text("circle_id")
+      .notNull()
+      .references(() => circle.id, { onDelete: "cascade" }),
+    totalPrice: integer("total_price").notNull(),
+    status: text("status").notNull().default("pending"), // pending / checked_in / completed / cancelled
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("pre_order_userId_idx").on(table.userId),
+    index("pre_order_circleId_idx").on(table.circleId),
+    index("pre_order_status_idx").on(table.status),
+  ]
+);
+
+// 事前オーダー詳細アイテムテーブル
+export const preOrderItem = sqliteTable(
+  "pre_order_item",
+  {
+    id: text("id").primaryKey(),
+    preOrderId: text("pre_order_id")
+      .notNull()
+      .references(() => preOrder.id, { onDelete: "cascade" }),
+    menuId: text("menu_id")
+      .notNull()
+      .references(() => menu.id),
+    quantity: integer("quantity").notNull().default(1),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [
+    index("pre_order_item_preOrderId_idx").on(table.preOrderId),
+  ]
+);
+
+// リレーション定義の追加
+export const eventUserRelations = relations(eventUser, ({ one, many }) => ({
+  event: one(event, {
+    fields: [eventUser.eventId],
+    references: [event.id],
+  }),
+  wristbands: many(wristband),
+  preOrders: many(preOrder),
+}));
+
+export const wristbandRelations = relations(wristband, ({ one }) => ({
+  user: one(eventUser, {
+    fields: [wristband.userId],
+    references: [eventUser.id],
+  }),
+}));
+
+export const preOrderRelations = relations(preOrder, ({ one, many }) => ({
+  user: one(eventUser, {
+    fields: [preOrder.userId],
+    references: [eventUser.id],
+  }),
+  circle: one(circle, {
+    fields: [preOrder.circleId],
+    references: [circle.id],
+  }),
+  items: many(preOrderItem),
+}));
+
+export const preOrderItemRelations = relations(preOrderItem, ({ one }) => ({
+  preOrder: one(preOrder, {
+    fields: [preOrderItem.preOrderId],
+    references: [preOrder.id],
+  }),
+  menu: one(menu, {
+    fields: [preOrderItem.menuId],
+    references: [menu.id],
+  }),
+}));
+
 

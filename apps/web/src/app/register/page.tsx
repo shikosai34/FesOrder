@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { CircleAuthGuard } from "@/hooks/useCircleAuth";
 import { menuApi, toppingApi, orderApi } from "@/lib/api";
+import { QrScannerModal } from "@/components/pos/qr-scanner-modal";
 import {
   Card,
   CardContent,
@@ -18,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import Image from "next/image";
-import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Trash2, QrCode } from "lucide-react";
 
 interface CartItem {
   menuId: string;
@@ -36,6 +37,8 @@ function RegisterPageContent() {
   const [circleId, setCircleId] = useState<string>("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [peopleCount, setPeopleCount] = useState(1);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+
 
   useEffect(() => {
     const storedCircleId = localStorage.getItem("circleId");
@@ -189,11 +192,29 @@ function RegisterPageContent() {
 
   return (
     <div className="container mx-auto p-4">
+      <QrScannerModal
+        circleId={circleId}
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+      />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* メニュー一覧 */}
         <div className="lg:col-span-2 space-y-4">
-          <h1 className="text-3xl font-bold">レジ - 注文入力</h1>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-primary p-4 text-primary-foreground border-[3px] border-border">
+            <h1 className="font-mono text-2xl font-black uppercase tracking-wider">
+              [レジ - 注文入力]
+            </h1>
+            <Button
+              variant="accent"
+              onClick={() => setIsQrModalOpen(true)}
+              className="h-12 uppercase tracking-wider"
+            >
+              <QrCode className="mr-2 h-5 w-5" />
+              [QR / リストバンド照会]
+            </Button>
+          </div>
           <div className="grid gap-4 md:grid-cols-2">
+
             {menus?.map((menu) => (
               <Card key={menu.id} className={menu.soldOut ? "opacity-60" : ""}>
                 <CardHeader>

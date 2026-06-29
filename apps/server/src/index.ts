@@ -17,7 +17,10 @@ import {
   orderRoutes,
   membershipRoutes,
   stampRoutes,
+  wristbandRoutes,
+  preOrderRoutes,
 } from "./routes";
+
 
 const app = new Hono();
 
@@ -25,9 +28,9 @@ app.use(logger());
 app.use(
   "/*",
   cors({
-    origin: process.env.CORS_ORIGIN || "",
+    origin: (origin) => origin || "*",
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: ["Content-Type", "Authorization", "Cookie", "Accept"],
     credentials: true,
   })
 );
@@ -44,8 +47,11 @@ app.route("/api/staff", staffRoutes);
 app.route("/api/orders", orderRoutes);
 app.route("/api/memberships", membershipRoutes);
 app.route("/api/stamps", stampRoutes);
+app.route("/api/wristbands", wristbandRoutes);
+app.route("/api/pre-orders", preOrderRoutes);
 
-// 画像アップロードエンドポイント
+
+// 画像・フォントファイルアップロードエンドポイント
 app.post("/api/upload", async (c) => {
   try {
     const body = await c.req.parseBody();
@@ -55,19 +61,22 @@ app.post("/api/upload", async (c) => {
       return c.json({ error: "ファイルがありません" }, 400);
     }
 
-    // ファイル形式チェック
-    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
-      return c.json({ error: "許可されていないファイル形式です" }, 400);
+    // 拡張子チェック
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    const allowedExts = [
+      "jpg", "jpeg", "png", "gif", "webp", "svg",
+      "ttf", "otf", "woff", "woff2"
+    ];
+    if (!allowedExts.includes(ext)) {
+      return c.json({ error: "許可されていないファイル形式です (画像: jpg, png, webp, svg / フォント: ttf, otf, woff, woff2)" }, 400);
     }
 
-    // ファイルサイズチェック (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      return c.json({ error: "ファイルサイズは5MB以下にしてください" }, 400);
+    // ファイルサイズチェック (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      return c.json({ error: "ファイルサイズは10MB以下にしてください" }, 400);
     }
 
     // ファイル名生成
-    const ext = file.name.split(".").pop() || "jpg";
     const fileName = `${nanoid()}.${ext}`;
 
     // 保存先ディレクトリ
@@ -86,12 +95,13 @@ app.post("/api/upload", async (c) => {
     // 公開パスを返す
     const publicPath = `/uploads/${fileName}`;
 
-    return c.json({ path: publicPath, fileName });
+    return c.json({ path: publicPath, fileName, ext });
   } catch (error) {
     console.error("Upload error:", error);
     return c.json({ error: "アップロードに失敗しました" }, 500);
   }
 });
+
 
 app.get("/", (c) => {
   return c.text("OK");
@@ -103,6 +113,7 @@ serve(
   {
     fetch: app.fetch,
     port: 3001,
+    hostname: "0.0.0.0",
   },
   (info) => {
     console.log(`Server is running on http://localhost:${info.port}`);

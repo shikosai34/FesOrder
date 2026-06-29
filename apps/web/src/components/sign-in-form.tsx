@@ -6,7 +6,7 @@ import Loader from "./loader";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { saveAuthInfo } from "@/hooks/useCircleAuth";
 import { membershipApi } from "@/lib/api";
 
@@ -16,6 +16,8 @@ export default function SignInForm({
 	onSwitchToSignUp: () => void;
 }) {
 	const router = useRouter();
+	const searchParams = useSearchParams();
+	const callbackUrl = searchParams.get("callbackUrl");
 	const { isPending } = authClient.useSession();
 
 	const form = useForm({
@@ -38,8 +40,6 @@ export default function SignInForm({
 							const circleMembership = memberships.find((m) => m.circleId);
 
 							if (adminMembership && circleMembership) {
-								// event_admin かつ サークルメンバーの場合:
-								// サークル情報を主として保存しつつ、admin権限も保持
 								saveAuthInfo({
 									circleId: circleMembership.circleId,
 									eventId: circleMembership.eventId || adminMembership.eventId,
@@ -53,15 +53,13 @@ export default function SignInForm({
 									adminEventId: adminMembership.eventId,
 								});
 
-								// サークル名を保存
 								if (circleMembership.circle) {
 									localStorage.setItem("circleName", circleMembership.circle.name);
 								}
 
-								router.push("/dashboard");
+								router.push((callbackUrl as any) || "/dashboard");
 								toast.success(`管理者 + ${circleMembership.circle?.name || "サークル"}としてログインしました`);
 							} else if (adminMembership) {
-								// event_admin のみの場合
 								saveAuthInfo({
 									circleId: null,
 									eventId: adminMembership.eventId,
@@ -74,7 +72,7 @@ export default function SignInForm({
 									adminMembershipId: adminMembership.id,
 									adminEventId: adminMembership.eventId,
 								});
-								router.push("/admin");
+								router.push((callbackUrl as any) || "/admin");
 								toast.success("管理者としてログインしました");
 							} else if (circleMembership) {
 								saveAuthInfo({
@@ -87,19 +85,18 @@ export default function SignInForm({
 									circleName: circleMembership.circle?.name || null,
 								});
 
-								// サークル名を保存
 								if (circleMembership.circle) {
 									localStorage.setItem("circleName", circleMembership.circle.name);
 								}
 
-								router.push("/dashboard");
+								router.push((callbackUrl as any) || "/dashboard");
 								toast.success(`${circleMembership.userName}さんとしてログインしました`);
 							} else {
-								router.push("/dashboard");
+								router.push((callbackUrl as any) || "/dashboard");
 								toast.success("ログインしました");
 							}
 						} catch (error) {
-							router.push("/dashboard");
+							router.push((callbackUrl as any) || "/dashboard");
 							toast.success("ログインしました");
 						}
 					},
@@ -199,7 +196,7 @@ export default function SignInForm({
 				<button
 					type="button"
 					onClick={onSwitchToSignUp}
-					className="text-[#0000FF] underline font-mono text-[12px] uppercase tracking-[1px] hover:text-black"
+					className="text-accent underline font-mono text-[12px] uppercase tracking-[1px] hover:text-foreground"
 				>
 					Need an account? Sign Up
 				</button>

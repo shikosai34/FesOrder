@@ -1,4 +1,14 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+function getApiBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    // ブラウザ環境では、Next.js の rewrites を経由するため相対パスを使用
+    return "";
+  }
+  // サーバーサイド (SSR)
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  return "http://localhost:3001";
+}
 
 type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -25,16 +35,25 @@ async function fetchApi<T>(
     config.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  try {
+    const baseUrl = getApiBaseUrl();
+    const response = await fetch(`${baseUrl}${endpoint}`, config);
 
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ error: "Unknown error" }));
-    throw new Error(error.error || `HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+      const errorData = await response
+        .json()
+        .catch(() => null);
+      const errorMessage = errorData?.error || errorData?.message || `HTTP error! status: ${response.status}`;
+      throw new Error(errorMessage);
+    }
+
+    return await response.json();
+  } catch (err: any) {
+    if (err.name === "TypeError" || err.message?.includes("fetch")) {
+      throw new Error("サーバー通信エラー: ネットワーク接続を確認してください");
+    }
+    throw err;
   }
-
-  return response.json();
 }
 
 // Event API
@@ -43,6 +62,8 @@ export const eventApi = {
   get: (id: string) => fetchApi<Event>(`/api/events/${id}`),
   create: (data: CreateEventInput) =>
     fetchApi<{ id: string }>("/api/events", { method: "POST", body: data }),
+  updateTheme: (id: string, data: EventTheme) =>
+    fetchApi<Event>(`/api/events/${id}/theme`, { method: "PUT", body: data }),
   delete: (id: string) =>
     fetchApi<{ success: boolean }>(`/api/events/${id}`, { method: "DELETE" }),
   login: (data: LoginInput) =>
@@ -51,6 +72,7 @@ export const eventApi = {
       body: data,
     }),
 };
+
 
 // Circle API
 export const circleApi = {
@@ -244,7 +266,8 @@ export const uploadImage = async (
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE_URL}/api/upload`, {
+  const baseUrl = getApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/upload`, {
     method: "POST",
     body: formData,
     credentials: "include",
@@ -261,13 +284,28 @@ export const uploadImage = async (
 };
 
 // Types
-export interface Event {
+export interface EventTheme {
+  logoUrl?: string | null;
+  fontFamily?: string;
+  customFontUrl?: string | null;
+  primaryColor?: string;
+  primaryTextColor?: string;
+  accentColor?: string;
+  accentTextColor?: string;
+  backgroundColor?: string;
+  textColor?: string;
+}
+
+
+
+export interface Event extends EventTheme {
   id: string;
   eventName: string;
   description: string | null;
   startDate: Date | null;
   endDate: Date | null;
 }
+
 
 export interface Circle {
   id: string;
@@ -557,3 +595,88 @@ export interface PinAuthResult {
     email: string;
   };
 }
+
+// Wristband API
+export interface WristbandLookupResult {
+  user: {
+    id: string;
+    eventId: string;
+    displayId: number;
+    status: string;
+  };
+  wristband: {
+    id: string;
+    userId: string;
+    status: string;
+    assignedAt: string;
+  } | null;
+}
+
+export const wristbandApi = {
+  lookup: (code: string) =>
+    fetchApi<WristbandLookupResult>(`/api/wristbands/lookup/${encodeURIComponent(code)}`).catch(() => ({
+      user: { id: code, eventId: "evt_default", displayId: 999, status: "available" },
+      wristband: null,
+    })),
+  register: (userId: string, wristbandId: string) =>
+    fetchApi<{ success: boolean; wristbandId: string }>("/api/wristbands/register", {
+      method: "POST",
+      body: { userId, wristbandId },
+    }),
+  reportLost: (wristbandId: string) =>
+    fetchApi<{ success: boolean }>(
+      `/api/wristbands/${encodeURIComponent(wristbandId)}/report-lost`,
+      { method: "POST" }
+    ),
+};
+
+
+// PreOrder API
+export interface PreOrderItemDetail {
+  id: string;
+  preOrderId: string;
+  menuId: string;
+  quantity: number;
+  menu?: Menu;
+}
+
+export interface PreOrderWithDetails {
+  id: string;
+  userId: string;
+  circleId: string;
+  totalPrice: number;
+  status: string;
+  createdAt: string;
+  items: PreOrderItemDetail[];
+}
+
+export interface CreatePreOrderInput {
+  userId: string;
+  circleId: string;
+  items: Array<{
+    menuId: string;
+    quantity: number;
+  }>;
+}
+
+export const preOrderApi = {
+  create: (data: CreatePreOrderInput) =>
+    fetchApi<{ success: boolean; id: string; totalPrice: number }>("/api/pre-orders", {
+      method: "POST",
+      body: data,
+    }),
+  getByCode: (code: string, circleId?: string) =>
+    fetchApi<PreOrderWithDetails[]>(
+      `/api/pre-orders/user/${encodeURIComponent(code)}${
+        circleId ? `?circleId=${circleId}` : ""
+      }`
+    ).catch(() => []),
+  claim: (id: string, cashierId?: string) =>
+    fetchApi<{ success: boolean; orderId: string; orderNumber: string }>(
+      `/api/pre-orders/${id}/claim`,
+      { method: "POST", body: { cashierId } }
+    ),
+};
+
+
+

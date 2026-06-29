@@ -38,8 +38,8 @@
   --secondary-foreground: #000000;
   --muted: #F0F0F0;
   --muted-foreground: #000000;
-  --accent: #FFFFFF;
-  --accent-foreground: #000000;
+  --accent: #000000;
+  --accent-foreground: #FFFFFF;
   --destructive: #FF0000;
   --destructive-foreground: #FFFFFF;
   --border: #000000;
@@ -99,30 +99,39 @@
   * {
     @apply border-border outline-ring/50 shadow-none rounded-none;
   }
+
   body {
     @apply bg-background text-foreground font-body;
   }
+
   h1 {
     @apply font-headline text-[64px] leading-[1.0] font-normal;
   }
+
   h2 {
     @apply font-headline text-[48px] leading-[1.05] font-normal;
   }
+
   h3 {
     @apply font-headline text-[32px] leading-[1.1] font-normal;
   }
+
   h4 {
     @apply font-body text-[22px] leading-[1.2] font-semibold;
   }
+
   .text-body {
     @apply font-body text-[16px] leading-[1.6] font-normal;
   }
+
   .text-small {
     @apply font-body text-[14px] leading-[1.5] font-normal;
   }
+
   .text-tiny {
     @apply font-body text-[12px] leading-[1.4] font-normal;
   }
+
   .text-mono {
     @apply font-mono text-[15px] leading-[1.5] font-normal;
   }
@@ -132,9 +141,11 @@
   .border-thin {
     @apply border-[1px] border-border;
   }
+
   .border-thick {
     @apply border-[3px] border-border;
   }
+
   .border-heavy {
     @apply border-[5px] border-border;
   }

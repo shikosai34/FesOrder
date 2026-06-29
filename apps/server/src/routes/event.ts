@@ -72,6 +72,58 @@ eventRoutes.delete("/:id", async (c) => {
   return c.json({ success: true });
 });
 
+// テーマパック設定の更新
+eventRoutes.put(
+  "/:id/theme",
+  zValidator(
+    "json",
+    z.object({
+      logoUrl: z.string().nullable().optional(),
+      fontFamily: z.string().optional(),
+      customFontUrl: z.string().nullable().optional(),
+      primaryColor: z.string().optional(),
+      primaryTextColor: z.string().optional(),
+      accentColor: z.string().optional(),
+      accentTextColor: z.string().optional(),
+      backgroundColor: z.string().optional(),
+      textColor: z.string().optional(),
+    })
+
+
+  ),
+  async (c) => {
+    const session = await getAdminSession(c);
+    if (!session) {
+      return c.json({ error: "管理者権限が必要です" }, 403);
+    }
+
+    const id = c.req.param("id");
+    const input = c.req.valid("json");
+
+    const existing = await db.select().from(event).where(eq(event.id, id));
+    if (existing.length === 0) {
+      // イベントが存在しない場合（デフォルトイベント等）、自動作成
+      await db.insert(event).values({
+        id,
+        eventName: "メインイベント (学園祭・フェス)",
+        ...input,
+      });
+    } else {
+      await db
+        .update(event)
+        .set({
+          ...input,
+          updatedAt: new Date(),
+        })
+        .where(eq(event.id, id));
+    }
+
+    const updated = await db.select().from(event).where(eq(event.id, id));
+    return c.json(updated[0]);
+  }
+);
+
+
 // サークルログイン（イベント名+サークル名+パスワードでサークルIDを取得）
 eventRoutes.post(
   "/login",

@@ -63,7 +63,23 @@ function DashboardContent() {
       index: "06",
       permission: "member:read" as const,
     },
+    {
+      title: "モバイルオーダーQR",
+      description: "店頭掲示用POPシートの表示・印刷",
+      href: "/dashboard/qr",
+      index: "07",
+      permission: "circle:read" as const,
+    },
+    {
+      title: "テーマパック設定",
+      description: "ロゴ・カラー・フォントの動的カスタマイズ",
+      href: "/admin/theme",
+      index: "08",
+      permission: "event:write" as const,
+    },
   ];
+
+
 
   return (
     <div className="max-w-6xl mx-auto p-sp-4 space-y-sp-5">
@@ -137,7 +153,23 @@ function DashboardContent() {
                 メニューを見る
               </Button>
             </Link>
+            <PermissionGuard permission="circle:read">
+              <Link href="/dashboard/qr">
+                <Button className="w-full bg-black text-white hover:bg-white hover:text-black font-bold">
+                  モバイルオーダーQRを表示・印刷
+                </Button>
+              </Link>
+            </PermissionGuard>
+            <PermissionGuard permission="event:write">
+              <Link href="/admin/theme">
+                <Button className="w-full border-[2px] border-black bg-white text-black hover:bg-black hover:text-white font-bold">
+                  🎨 イベントテーマパックを設定
+                </Button>
+              </Link>
+            </PermissionGuard>
+
           </CardContent>
+
         </Card>
 
         <Card>

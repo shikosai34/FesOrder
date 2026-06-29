@@ -5,21 +5,23 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-	"inline-flex items-center justify-center gap-2 whitespace-nowrap font-headline uppercase tracking-[2px] transition-all disabled:pointer-events-none disabled:bg-[#F5F5F5] disabled:border-[#CCCCCC] disabled:text-muted-foreground [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:ring-0 active:border-heavy active:bg-black active:text-white",
+	"inline-flex items-center justify-center gap-2 whitespace-nowrap font-headline uppercase tracking-[2px] transition-all disabled:pointer-events-none disabled:bg-muted disabled:border-muted disabled:text-muted-foreground [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:ring-0 active:border-heavy active:bg-primary active:text-primary-foreground",
 	{
 		variants: {
 			variant: {
 				default:
-					"bg-black text-white border-black border-thick hover:bg-white hover:text-black",
+					"bg-primary text-primary-foreground border-border border-thick hover:opacity-90",
 				destructive:
-					"bg-destructive text-destructive-foreground border-black border-thick hover:bg-black hover:text-destructive",
+					"bg-destructive text-destructive-foreground border-border border-thick hover:opacity-90",
 				outline:
-					"bg-white text-black border-black border-thick hover:bg-black hover:text-white",
+					"bg-background text-foreground border-border border-thick hover:bg-primary hover:text-primary-foreground",
 				secondary:
-					"bg-white text-black border-black border-thick hover:bg-black hover:text-white",
+					"bg-background text-foreground border-border border-thick hover:bg-primary hover:text-primary-foreground",
+				accent:
+					"bg-accent text-accent-foreground border-border border-thick hover:brightness-110",
 				ghost:
-					"bg-transparent text-black border-transparent underline hover:text-info active:border-transparent active:no-underline",
-				link: "text-info underline-offset-4 hover:underline border-transparent",
+					"bg-transparent text-foreground border-transparent underline hover:text-accent active:border-transparent active:no-underline",
+				link: "text-accent underline-offset-4 hover:underline border-transparent",
 			},
 			size: {
 				default: "h-[44px] px-[24px] text-[14px]",

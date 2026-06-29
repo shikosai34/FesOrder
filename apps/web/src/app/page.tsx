@@ -36,26 +36,26 @@ export default function Home() {
   ];
 
   return (
-    <div className="bg-white text-black font-body">
+    <div className="bg-background text-foreground font-body">
       {/* ヒーローセクション */}
-      <section className="border-b-[5px] border-black py-sp-7 px-sp-4 bg-white">
+      <section className="border-b-[5px] border-border py-sp-7 px-sp-4 bg-background">
         <div className="max-w-5xl mx-auto text-center space-y-sp-5">
-          <div className="inline-block bg-black text-white font-headline uppercase text-[12px] tracking-[3px] px-sp-3 py-sp-2 border-[3px] border-black">
+          <div className="inline-block bg-accent text-accent-foreground font-headline uppercase text-[12px] tracking-[3px] px-sp-3 py-sp-2 border-[3px] border-accent">
             FESORDER // SYSTEM v1.0
           </div>
-          <h1 className="text-[48px] sm:text-[64px] md:text-[80px] font-headline uppercase tracking-[-2px] leading-[1.0] text-black">
+          <h1 className="text-[48px] sm:text-[64px] md:text-[80px] font-headline uppercase tracking-[-2px] leading-[1.0] text-foreground">
             学園祭
             <br className="md:hidden" />
             注文システム
           </h1>
-          <p className="text-[16px] md:text-[18px] font-mono max-w-3xl mx-auto leading-[1.6] text-black">
+          <p className="text-[16px] md:text-[18px] font-mono max-w-3xl mx-auto leading-[1.6] text-foreground">
             学園祭での注文管理を、もっとスマートに、もっとスムーズに。
             <br />
             無駄を削ぎ落としたリアルタイムPOS/KITCHENソリューション。
           </p>
           <div className="flex gap-sp-3 justify-center flex-wrap pt-sp-3">
             <Link href="/circle-login">
-              <Button size="lg">
+              <Button size="lg" variant="accent">
                 ログインして始める
               </Button>
             </Link>
@@ -69,9 +69,9 @@ export default function Home() {
       </section>
 
       {/* 機能紹介 */}
-      <section className="py-sp-7 px-sp-4 border-b-[5px] border-black bg-[#F0F0F0]">
+      <section className="py-sp-7 px-sp-4 border-b-[5px] border-border bg-muted">
         <div className="max-w-6xl mx-auto space-y-sp-5">
-          <div className="flex justify-between items-end border-b-[3px] border-black pb-sp-3">
+          <div className="flex justify-between items-end border-b-[3px] border-border pb-sp-3">
             <h2 className="text-[32px] md:text-[48px] font-headline uppercase tracking-tight leading-[1.05]">
               主な機能
             </h2>
@@ -83,14 +83,14 @@ export default function Home() {
             {features.map((feature) => (
               <div
                 key={feature.title}
-                className="bg-white border-[3px] border-black p-sp-4 flex flex-col justify-between hover:bg-black hover:text-white group"
+                className="bg-background border-[3px] border-border p-sp-4 flex flex-col justify-between hover:bg-primary hover:text-primary-foreground group"
               >
                 <div>
                   <div className="flex items-center justify-between mb-sp-4">
                     <span className="font-mono text-[28px] font-bold leading-none">
                       {feature.index}
                     </span>
-                    <span className="font-mono text-[10px] font-bold uppercase border-[2px] border-black group-hover:border-white px-sp-2 py-sp-1 tracking-[1px]">
+                    <span className="font-mono text-[10px] font-bold uppercase border-[2px] border-border group-hover:border-primary-foreground px-sp-2 py-sp-1 tracking-[1px]">
                       {feature.tag}
                     </span>
                   </div>
@@ -105,7 +105,7 @@ export default function Home() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full justify-between group-hover:bg-white group-hover:text-black group-hover:border-white"
+                    className="w-full justify-between group-hover:bg-background group-hover:text-foreground group-hover:border-background"
                   >
                     アクセス
                     <span className="font-mono font-bold">→</span>
@@ -118,14 +118,14 @@ export default function Home() {
       </section>
 
       {/* 特徴 */}
-      <section className="py-sp-7 px-sp-4 border-b-[5px] border-black bg-white">
+      <section className="py-sp-7 px-sp-4 border-b-[5px] border-border bg-background">
         <div className="max-w-6xl mx-auto space-y-sp-5">
           <h2 className="text-[32px] md:text-[48px] font-headline uppercase tracking-tight text-center leading-[1.05]">
             システムの特徴
           </h2>
           <div className="grid gap-sp-4 md:grid-cols-3">
-            <div className="border-[3px] border-black p-sp-5 bg-white space-y-sp-3">
-              <div className="font-mono text-[28px] font-bold border-b-[2px] border-black pb-sp-2">
+            <div className="border-[3px] border-border p-sp-5 bg-background space-y-sp-3">
+              <div className="font-mono text-[28px] font-bold border-b-[2px] border-border pb-sp-2 text-accent">
                 01 // SPEED
               </div>
               <h3 className="text-[22px] font-headline uppercase leading-[1.1]">
@@ -135,8 +135,8 @@ export default function Home() {
                 注文から調理完成までリアルタイム通信で共有。現場のタイムラグを極限まで削減。
               </p>
             </div>
-            <div className="border-[3px] border-black p-sp-5 bg-white space-y-sp-3">
-              <div className="font-mono text-[28px] font-bold border-b-[2px] border-black pb-sp-2">
+            <div className="border-[3px] border-border p-sp-5 bg-background space-y-sp-3">
+              <div className="font-mono text-[28px] font-bold border-b-[2px] border-border pb-sp-2 text-accent">
                 02 // CROSS-PLATFORM
               </div>
               <h3 className="text-[22px] font-headline uppercase leading-[1.1]">
@@ -146,8 +146,8 @@ export default function Home() {
                 スマホ、タブレット、PC。あらゆるブラウザから専用アプリ不要で即時利用可能。
               </p>
             </div>
-            <div className="border-[3px] border-black p-sp-5 bg-white space-y-sp-3">
-              <div className="font-mono text-[28px] font-bold border-b-[2px] border-black pb-sp-2">
+            <div className="border-[3px] border-border p-sp-5 bg-background space-y-sp-3">
+              <div className="font-mono text-[28px] font-bold border-b-[2px] border-border pb-sp-2 text-accent">
                 03 // REALTIME
               </div>
               <h3 className="text-[22px] font-headline uppercase leading-[1.1]">
@@ -162,8 +162,8 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="py-sp-7 px-sp-4 bg-black text-white">
-        <div className="max-w-4xl mx-auto border-[5px] border-white p-sp-5 md:p-sp-7 text-center space-y-sp-5 bg-black">
+      <section className="py-sp-7 px-sp-4 bg-primary text-primary-foreground">
+        <div className="max-w-4xl mx-auto border-[5px] border-primary-foreground p-sp-5 md:p-sp-7 text-center space-y-sp-5 bg-primary">
           <h2 className="text-[32px] md:text-[48px] font-headline uppercase tracking-tight leading-[1.05]">
             GET STARTED NOW
           </h2>
@@ -174,7 +174,8 @@ export default function Home() {
             <Link href="/circle-login">
               <Button
                 size="lg"
-                className="bg-white text-black hover:bg-black hover:text-white border-[3px] border-white"
+                variant="accent"
+                className="border-[3px] border-transparent"
               >
                 ログイン画面へ進む
               </Button>

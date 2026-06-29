@@ -6,6 +6,8 @@ import staffRoutes from "./staff";
 import orderRoutes from "./order";
 import membershipRoutes from "./membership";
 import stampRoutes from "./stamp";
+import wristbandRoutes from "./wristband";
+import preOrderRoutes from "./pre_order";
 
 export {
   eventRoutes,
@@ -16,4 +18,7 @@ export {
   orderRoutes,
   membershipRoutes,
   stampRoutes,
+  wristbandRoutes,
+  preOrderRoutes,
 };
+

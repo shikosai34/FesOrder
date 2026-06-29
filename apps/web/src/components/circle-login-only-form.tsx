@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { eventApi, membershipApi, circleApi, type Event, type Circle } from "@/lib/api";
 import { saveAuthInfo, type RoleType } from "@/hooks/useCircleAuth";
@@ -12,6 +12,8 @@ import { toast } from "sonner";
 
 export default function CircleLoginOnlyForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl");
   const [events, setEvents] = useState<Event[]>([]);
   const [circles, setCircles] = useState<Circle[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
@@ -94,7 +96,7 @@ export default function CircleLoginOnlyForm() {
       });
 
       toast.success(`${data.userName}さん、ようこそ！`);
-      router.push("/dashboard");
+      router.push((callbackUrl as any) || "/dashboard");
     },
     onError: (error: any) => {
       toast.error(error.message || "認証に失敗しました");
@@ -131,7 +133,7 @@ export default function CircleLoginOnlyForm() {
           <Label htmlFor="eventSelect" className="block font-headline uppercase text-xs tracking-wider">イベント選択</Label>
           <select
             id="eventSelect"
-            className="flex w-full rounded-none border-thick border-black bg-[#F0F0F0] text-black px-3 py-2.5 font-mono text-[15px] transition-all focus:outline-none focus:border-heavy disabled:opacity-50"
+            className="flex w-full rounded-none border-thick border-border bg-input text-foreground px-3 py-2.5 font-mono text-[15px] transition-all focus:outline-none focus:border-heavy disabled:opacity-50"
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}
           >
@@ -149,7 +151,7 @@ export default function CircleLoginOnlyForm() {
           <Label htmlFor="circleSelect" className="block font-headline uppercase text-xs tracking-wider">店舗・サークル選択</Label>
           <select
             id="circleSelect"
-            className="flex w-full rounded-none border-thick border-black bg-[#F0F0F0] text-black px-3 py-2.5 font-mono text-[15px] transition-all focus:outline-none focus:border-heavy disabled:opacity-50"
+            className="flex w-full rounded-none border-thick border-border bg-input text-foreground px-3 py-2.5 font-mono text-[15px] transition-all focus:outline-none focus:border-heavy disabled:opacity-50"
             value={selectedCircleId}
             onChange={(e) => setSelectedCircleId(e.target.value)}
             disabled={!selectedEventId || circles.length === 0}
@@ -188,7 +190,7 @@ export default function CircleLoginOnlyForm() {
               required
             />
           </div>
-          <Button type="submit" className="w-full h-12 text-base font-headline uppercase tracking-wider bg-black text-white hover:bg-white hover:text-black border-thick border-black transition-colors" disabled={isLoading || !selectedCircleId}>
+          <Button type="submit" variant="accent" className="w-full h-12 text-base font-headline uppercase tracking-wider" disabled={isLoading || !selectedCircleId}>
             {isLoading ? "認証中..." : "ログイン"}
           </Button>
         </form>
