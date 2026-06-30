@@ -121,14 +121,14 @@ export function QrScannerModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
       {/* RawBlock モーダルコンテナ */}
-      <div className="relative w-full max-w-2xl border-[5px] border-black bg-white p-6 shadow-none">
+      <div className="relative w-full max-w-2xl border-[5px] border-black bg-white p-4 sm:p-6 shadow-none">
         {/* ヘッダー */}
-        <div className="mb-6 flex items-center justify-between border-b-[3px] border-black pb-4">
-          <div className="flex items-center space-x-3">
+        <div className="mb-4 sm:mb-6 flex items-center justify-between border-b-[3px] border-black pb-4">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             <div className="bg-black p-2 text-white">
-              <QrCode className="h-6 w-6" />
+              <QrCode className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-            <h2 className="font-mono text-2xl font-black uppercase tracking-wider">
+            <h2 className="font-mono text-lg sm:text-2xl font-black uppercase tracking-wider">
               [QR / リストバンド照会]
             </h2>
           </div>
@@ -142,7 +142,7 @@ export function QrScannerModal({
 
         {/* カメラ/スキャナー入力エリア */}
         <div className="mb-6 space-y-4">
-          <form onSubmit={handleSearch} className="flex gap-2">
+          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
               <Label htmlFor="qrInput" className="sr-only">
                 リストバンドID / ユーザーID
@@ -152,26 +152,28 @@ export function QrScannerModal({
                 ref={inputRef}
                 type="text"
                 placeholder="リストバンドQRをスキャン / コード入力..."
-                className="h-14 border-[3px] border-black bg-[#F0F0F0] font-mono text-lg rounded-none focus-visible:border-[5px] focus-visible:ring-0"
+                className="h-14 w-full border-[3px] border-black bg-[#F0F0F0] font-mono text-sm sm:text-lg rounded-none focus-visible:border-[5px] focus-visible:ring-0"
                 value={scannedCode}
                 onChange={(e) => setScannedCode(e.target.value)}
               />
             </div>
-            <Button
-              type="submit"
-              disabled={searchMutation.isPending}
-              className="h-14 border-[3px] border-black bg-black px-6 font-mono text-base font-bold uppercase text-white rounded-none hover:bg-white hover:text-black"
-            >
-              <Search className="mr-2 h-5 w-5" />
-              照会
-            </Button>
-            <Button
-              type="button"
-              onClick={isCameraActive ? stopCamera : startCamera}
-              className="h-14 border-[3px] border-black bg-white px-4 text-black rounded-none hover:bg-black hover:text-white"
-            >
-              <Camera className="h-5 w-5" />
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                disabled={searchMutation.isPending}
+                className="flex-1 sm:flex-none h-14 border-[3px] border-black bg-black px-6 font-mono text-base font-bold uppercase text-white rounded-none hover:bg-white hover:text-black"
+              >
+                <Search className="mr-2 h-5 w-5" />
+                照会
+              </Button>
+              <Button
+                type="button"
+                onClick={isCameraActive ? stopCamera : startCamera}
+                className="h-14 border-[3px] border-black bg-white px-4 text-black rounded-none hover:bg-black hover:text-white"
+              >
+                <Camera className="h-5 w-5" />
+              </Button>
+            </div>
           </form>
 
           {/* カメラプレビュー */}
@@ -206,18 +208,18 @@ export function QrScannerModal({
           {preOrders.map((po) => (
             <div
               key={po.id}
-              className="border-[4px] border-black bg-white p-5 space-y-4"
+              className="border-[4px] border-black bg-white p-4 sm:p-5 space-y-4"
             >
-              <div className="flex justify-between items-start border-b-[2px] border-black pb-3">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b-[2px] border-black pb-3 gap-2 sm:gap-0">
                 <div>
                   <span className="bg-black text-white px-2 py-1 font-mono text-xs font-bold uppercase tracking-widest">
                     事前オーダー
                   </span>
-                  <p className="font-mono text-xs text-gray-600 mt-1">
+                  <p className="font-mono text-xs text-gray-600 mt-1 sm:mt-2">
                     ID: {po.id} | 登録: {new Date(po.createdAt).toLocaleTimeString("ja-JP")}
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right">
                   <span className="font-mono text-2xl font-black">
                     ¥{po.totalPrice.toLocaleString()}
                   </span>
@@ -243,9 +245,9 @@ export function QrScannerModal({
               <Button
                 onClick={() => claimMutation.mutate(po.id)}
                 disabled={claimMutation.isPending}
-                className="w-full h-14 border-[3px] border-black bg-black font-mono text-lg font-black uppercase text-white rounded-none hover:bg-[#008000] hover:text-white transition-all shadow-none active:translate-y-1"
+                className="w-full h-12 sm:h-14 border-[3px] border-black bg-black font-mono text-base sm:text-lg font-black uppercase text-white rounded-none hover:bg-[#008000] hover:text-white transition-all shadow-none active:translate-y-1"
               >
-                <CheckCircle2 className="mr-2 h-6 w-6" />
+                <CheckCircle2 className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
                 {claimMutation.isPending ? "処理中..." : "【受取確定＆調理開始】"}
               </Button>
             </div>

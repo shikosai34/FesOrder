@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   CircleAuthGuard,
   PermissionGuard,
@@ -10,12 +10,34 @@ import { useQuery } from "@tanstack/react-query";
 import { circleApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Printer, ArrowLeft, QrCode, Smartphone } from "lucide-react";
+import {
+  Printer,
+  ArrowLeft,
+  Smartphone,
+  FileDown,
+  Image as ImageIcon,
+  Loader2,
+  Download,
+} from "lucide-react";
 import Link from "next/link";
+import { QRCodeSVG } from "qrcode.react";
+import { toPng } from "html-to-image";
+import jsPDF from "jspdf";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function CircleQrContent() {
   const { circleId } = useAuth();
   const [origin, setOrigin] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+  const popRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -39,12 +61,75 @@ function CircleQrContent() {
   }
 
   const mobileOrderUrl = `${origin}/menu?circleId=${circleId}`;
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(
-    mobileOrderUrl
-  )}`;
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPng = async () => {
+    if (!popRef.current) return;
+    setIsExporting(true);
+    toast.info("超高画質PNG画像を生成中...");
+    try {
+      const dataUrl = await toPng(popRef.current, {
+        cacheBust: true,
+        pixelRatio: 4,
+        backgroundColor: "#ffffff",
+        skipFonts: true,
+      });
+      const link = document.createElement("a");
+      link.download = `${circle?.name || "POP"}_MobileOrder.png`;
+      link.href = dataUrl;
+      link.click();
+      toast.success("超高画質PNG画像をダウンロードしました");
+    } catch (err) {
+      console.error("Failed to export PNG", err);
+      toast.error("PNG画像の出力に失敗しました");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!popRef.current) return;
+    setIsExporting(true);
+    toast.info("超高画質PDFファイルを生成中...");
+    try {
+      const dataUrl = await toPng(popRef.current, {
+        cacheBust: true,
+        pixelRatio: 4,
+        backgroundColor: "#ffffff",
+        skipFonts: true,
+      });
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const margin = 10;
+      const availableWidth = pdfWidth - margin * 2;
+
+      const img = new window.Image();
+      img.src = dataUrl;
+      await new Promise((resolve) => {
+        img.onload = resolve;
+      });
+
+      const imgWidth = availableWidth;
+      const imgHeight = (img.height * imgWidth) / img.width;
+
+      pdf.addImage(dataUrl, "PNG", margin, margin, imgWidth, imgHeight);
+      pdf.save(`${circle?.name || "POP"}_MobileOrder.pdf`);
+      toast.success("PDFファイルをダウンロードしました");
+    } catch (err) {
+      console.error("Failed to export PDF", err);
+      toast.error("PDFファイルの出力に失敗しました");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -63,17 +148,70 @@ function CircleQrContent() {
             [店頭掲示用 モバイルオーダーQR POP]
           </h1>
         </div>
-        <Button
-          onClick={handlePrint}
-          className="h-14 border-[3px] border-black bg-black px-6 font-mono text-lg font-bold uppercase text-white rounded-none hover:bg-white hover:text-black transition-all"
-        >
-          <Printer className="mr-2 h-6 w-6" />
-          POPを印刷 / PDF出力
-        </Button>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                disabled={isExporting}
+                className="h-12 border-[3px] border-black bg-black px-5 font-mono text-base font-bold uppercase text-white rounded-none hover:bg-white hover:text-black transition-all flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
+              >
+                {isExporting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Download className="h-5 w-5" />
+                )}
+                <span>POPを出力 / 保存</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-56 font-mono border-[3px] border-black rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            >
+              <DropdownMenuLabel className="font-bold">出力形式を選択</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-black h-[2px]" />
+              <DropdownMenuItem
+                onClick={handleDownloadPdf}
+                className="cursor-pointer py-3 font-bold flex items-center gap-2 hover:bg-[#F0F0F0]"
+              >
+                <FileDown className="h-5 w-5" />
+                <span>PDFで保存 (.pdf)</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleDownloadPng}
+                className="cursor-pointer py-3 font-bold flex items-center gap-2 hover:bg-[#F0F0F0]"
+              >
+                <ImageIcon className="h-5 w-5" />
+                <span>PNG画像で保存 (.png)</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-black h-[2px]" />
+              <DropdownMenuItem
+                onClick={handlePrint}
+                className="cursor-pointer py-3 font-bold flex items-center gap-2 hover:bg-[#F0F0F0]"
+              >
+                <Printer className="h-5 w-5" />
+                <span>印刷ダイアログを開く</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button
+            onClick={handlePrint}
+            variant="outline"
+            disabled={isExporting}
+            className="h-12 border-[3px] border-black bg-white px-4 font-mono text-base font-bold uppercase text-black rounded-none hover:bg-black hover:text-white transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
+          >
+            <Printer className="mr-2 h-5 w-5" />
+            印刷
+          </Button>
+        </div>
       </div>
 
       {/* 店頭掲示用 POP シート (印刷対象) */}
-      <div className="print:m-0 print:p-0 print:border-none print:shadow-none border-[8px] border-black bg-white p-8 space-y-8 text-center text-black">
+      <div
+        ref={popRef}
+        className="print:m-0 print:p-0 print:border-none print:shadow-none border-[8px] border-black bg-white p-8 space-y-8 text-center text-black"
+      >
         {/* POP ヘッダー */}
         <div className="bg-black text-white p-6 border-[4px] border-black space-y-2">
           <span className="bg-white text-black px-4 py-1 font-mono text-sm font-black uppercase tracking-widest inline-block">
@@ -90,11 +228,10 @@ function CircleQrContent() {
         {/* メイン QR 描画エリア */}
         <div className="my-8 flex flex-col items-center justify-center space-y-6">
           <div className="relative border-[6px] border-black bg-white p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-            <img
-              src={qrImageUrl}
-              alt="Mobile Order QR Code"
-              width={280}
-              height={280}
+            <QRCodeSVG
+              value={mobileOrderUrl}
+              size={280}
+              level="H"
               className="mx-auto block"
             />
           </div>
@@ -148,3 +285,4 @@ export default function CircleQrPage() {
     </CircleAuthGuard>
   );
 }
+
