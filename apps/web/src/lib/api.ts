@@ -86,6 +86,11 @@ export const circleApi = {
       method: "PUT",
       body: data,
     }),
+  updateMods: (id: string, mods: Record<string, any>) =>
+    fetchApi<{ success: boolean }>(`/api/circles/${id}/mods`, {
+      method: "PATCH",
+      body: { mods },
+    }),
   delete: (id: string) =>
     fetchApi<{ success: boolean }>(`/api/circles/${id}`, { method: "DELETE" }),
 };
@@ -314,6 +319,7 @@ export interface Circle {
   description: string | null;
   iconImagePath: string | null;
   backgroundImagePath: string | null;
+  mods?: string;
   managerEmail?: string;
   managerName?: string;
 }

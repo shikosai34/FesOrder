@@ -5,7 +5,7 @@ import { db, circle, event, membership } from "@new-modern-app/db";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import bcrypt from "bcryptjs";
-import { getAdminSession } from "../utils/auth";
+import { getAdminSession, hasPermission } from "../utils/auth";
 
 const circleRoutes = new Hono();
 
@@ -19,6 +19,7 @@ circleRoutes.get("/", async (c) => {
       eventId: circle.eventId,
       name: circle.name,
       description: circle.description,
+      mods: circle.mods,
       createdAt: circle.createdAt,
       updatedAt: circle.updatedAt,
       managerEmail: membership.userEmail,
@@ -51,6 +52,7 @@ circleRoutes.get("/:id", async (c) => {
       eventId: circle.eventId,
       name: circle.name,
       description: circle.description,
+      mods: circle.mods,
       createdAt: circle.createdAt,
       updatedAt: circle.updatedAt,
       managerEmail: membership.userEmail,
@@ -259,5 +261,45 @@ circleRoutes.delete("/:id", async (c) => {
   await db.delete(circle).where(eq(circle.id, id));
   return c.json({ success: true });
 });
+
+// サークルの拡張機能（モッド）設定の更新
+circleRoutes.patch(
+  "/:id/mods",
+  zValidator(
+    "json",
+    z.object({
+      mods: z.record(z.string(), z.any()),
+    })
+  ),
+  async (c) => {
+    const id = c.req.param("id");
+    const { mods } = c.req.valid("json");
+
+    // 該当サークルへの書き込み権限をチェック
+    const allowed = await hasPermission(c, id, "circle:write");
+    if (!allowed) {
+      return c.json({ error: "権限がありません" }, 403);
+    }
+
+    // 対象サークルの存在確認
+    const existingCircle = await db
+      .select()
+      .from(circle)
+      .where(eq(circle.id, id));
+    if (existingCircle.length === 0) {
+      return c.json({ error: "サークルが見つかりません" }, 404);
+    }
+
+    // データベースの更新
+    await db
+      .update(circle)
+      .set({
+        mods: JSON.stringify(mods),
+      })
+      .where(eq(circle.id, id));
+
+    return c.json({ success: true });
+  }
+);
 
 export default circleRoutes;

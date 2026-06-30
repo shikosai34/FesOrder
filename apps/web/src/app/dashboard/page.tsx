@@ -77,6 +77,13 @@ function DashboardContent() {
       index: "08",
       permission: "event:write" as const,
     },
+    {
+      title: "拡張機能 (モッド)",
+      description: "サークル専用の拡張機能の管理・有効化",
+      href: "/dashboard/mods",
+      index: "09",
+      permission: "circle:write" as const,
+    },
   ];
 
 

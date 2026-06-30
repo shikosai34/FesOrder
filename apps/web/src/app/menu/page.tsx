@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { eventApi, circleApi, menuApi, preOrderApi } from "@/lib/api";
+import { eventApi, circleApi, menuApi, preOrderApi, orderApi } from "@/lib/api";
 import { useGuestUser } from "@/hooks/useGuestUser";
 import {
   Card,
@@ -38,6 +38,8 @@ function MenuPageContent() {
     circleIdParam
   );
   const [cart, setCart] = useState<CartItem[]>([]);
+
+
 
   // イベント一覧取得
   const { data: events, isLoading: eventsLoading } = useQuery({
@@ -95,6 +97,58 @@ function MenuPageContent() {
     },
   });
 
+  const [successOrderInfo, setSuccessOrderInfo] = useState<{
+    orderId: string;
+    orderNumber: string;
+    totalPrice: number;
+  } | null>(null);
+
+  // 直接注文作成ミューテーション (店頭代引きモバイルオーダー用)
+  const directOrderMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedCircleId || cart.length === 0) return;
+      return await orderApi.create({
+        circleId: selectedCircleId,
+        peopleCount: 1,
+        items: cart.map((item) => ({
+          menuId: item.menuId,
+          quantity: item.quantity,
+        })),
+        userId: userId || undefined,
+      });
+    },
+    onSuccess: (data) => {
+      if (typeof window !== "undefined") {
+        try {
+          const stored = localStorage.getItem("fesorder_direct_orders");
+          const orders = stored ? JSON.parse(stored) : [];
+          orders.push({
+            orderId: data.id,
+            orderNumber: data.orderNumber,
+            circleId: selectedCircleId,
+            circleName: circleData?.name || "サークル",
+            totalPrice: getTotalPrice(),
+            createdAt: new Date().toISOString(),
+          });
+          localStorage.setItem("fesorder_direct_orders", JSON.stringify(orders));
+        } catch (e) {
+          console.error("Failed to save direct order locally:", e);
+        }
+      }
+
+      setSuccessOrderInfo({
+        orderId: data.id,
+        orderNumber: data.orderNumber,
+        totalPrice: getTotalPrice(),
+      });
+      setCart([]);
+      toast.success("注文を送信しました！");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "注文の送信に失敗しました");
+    },
+  });
+
   const addToCart = (menuId: string, menuName: string, menuPrice: number) => {
     const existing = cart.find((i) => i.menuId === menuId);
     if (existing) {
@@ -121,6 +175,60 @@ function MenuPageContent() {
 
   const getTotalCount = () => cart.reduce((sum, i) => sum + i.quantity, 0);
   const getTotalPrice = () => cart.reduce((sum, i) => sum + i.menuPrice * i.quantity, 0);
+
+  const getPreOrderModSettings = () => {
+    if (!circleData || !circleData.mods) {
+      return { enabled: false, buttonText: "事前注文する(店頭決済)", description: "並ばずに事前注文できます。店頭のレジで注文番号を提示し、お支払いください。" };
+    }
+    try {
+      const parsed = JSON.parse(circleData.mods);
+      const preOrderMod = parsed.installed?.["circle-pre-order-cod"];
+      if (preOrderMod) {
+        return {
+          enabled: preOrderMod.enabled ?? false,
+          buttonText: preOrderMod.settings?.buttonText ?? "事前注文する(店頭決済)",
+          description: preOrderMod.settings?.description ?? "並ばずに事前注文できます。店頭のレジで注文番号を提示し、お支払いください。"
+        };
+      }
+      return { enabled: false, buttonText: "事前注文する(店頭決済)", description: "並ばずに事前注文できます。店頭のレジで注文番号を提示し、お支払いください。" };
+    } catch (e) {
+      return { enabled: false, buttonText: "事前注文する(店頭決済)", description: "並ばずに事前注文できます。店頭のレジで注文番号を提示し、お支払いください。" };
+    }
+  };
+
+  const preOrderSettings = getPreOrderModSettings();
+
+  // 有効な外部モッドの一覧取得
+  const getActiveMods = () => {
+    if (!circleData || !circleData.mods) return [];
+    try {
+      const parsed = JSON.parse(circleData.mods);
+      return Object.values(parsed.installed || {}).filter((m: any) => m.enabled);
+    } catch (e) {
+      return [];
+    }
+  };
+
+  // 外部モッド用グローバルAPIの公開
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).FesOrder = {
+        circleId: selectedCircleId,
+        circleData,
+        cart,
+        addToCart,
+        updateQuantity,
+        clearCart: () => setCart([]),
+        submitOrder: () => {
+          if (preOrderSettings.enabled) {
+            directOrderMutation.mutate();
+          } else {
+            preOrderMutation.mutate();
+          }
+        },
+      };
+    }
+  }, [selectedCircleId, circleData, cart, preOrderSettings.enabled]);
 
   // イベント選択画面
   if (!selectedEventId && !selectedCircleId) {
@@ -351,8 +459,13 @@ function MenuPageContent() {
       {/* メニュー一覧 */}
       <div>
         <h2 className="text-[32px] font-headline uppercase tracking-tight mb-sp-3 leading-[1.1]">
-          メニューを選択して事前注文
+          {preOrderSettings.enabled ? "メニューを選択して事前注文" : "メニュー一覧"}
         </h2>
+        {!preOrderSettings.enabled && (
+          <div className="border-[3px] border-black bg-[#F0F0F0] p-4 mb-6 font-mono text-sm">
+            💡 このサークルは現在モバイルオーダー（事前注文）に対応していません。恐れ入りますが、店頭にお並びの上、ご注文ください。
+          </div>
+        )}
         {menus && menus.length > 0 ? (
           <div className="grid gap-sp-3 md:grid-cols-2 lg:grid-cols-3">
             {menus.map((menu) => {
@@ -399,34 +512,43 @@ function MenuPageContent() {
                   </CardContent>
 
                   <CardFooter className="border-t-[3px] border-black pt-4">
-                    {qty > 0 ? (
-                      <div className="flex items-center justify-between w-full bg-[#F0F0F0] border-[2px] border-black p-1">
+                    {preOrderSettings.enabled ? (
+                      qty > 0 ? (
+                        <div className="flex items-center justify-between w-full bg-[#F0F0F0] border-[2px] border-black p-1">
+                          <Button
+                            type="button"
+                            onClick={() => updateQuantity(menu.id, -1)}
+                            className="h-10 w-10 border-[2px] border-border bg-background text-foreground rounded-none hover:bg-primary hover:text-primary-foreground transition-all"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <span className="font-mono font-bold text-lg px-4">
+                            {qty}
+                          </span>
+                          <Button
+                            type="button"
+                            onClick={() => updateQuantity(menu.id, 1)}
+                            className="h-10 w-10 border-[2px] border-border bg-background text-foreground rounded-none hover:bg-primary hover:text-primary-foreground transition-all"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
                         <Button
-                          type="button"
-                          onClick={() => updateQuantity(menu.id, -1)}
-                          className="h-10 w-10 border-[2px] border-border bg-background text-foreground rounded-none hover:bg-primary hover:text-primary-foreground transition-all"
+                          onClick={() => addToCart(menu.id, menu.name, menu.price)}
+                          disabled={menu.soldOut}
+                          className="w-full h-12 border-[3px] border-black bg-black font-mono text-base font-bold uppercase text-white rounded-none hover:bg-white hover:text-black transition-colors"
                         >
-                          <Minus className="h-4 w-4" />
+                          <ShoppingCart className="mr-2 h-5 w-5" />
+                          カートに追加
                         </Button>
-                        <span className="font-mono font-bold text-lg px-4">
-                          {qty}
-                        </span>
-                        <Button
-                          type="button"
-                          onClick={() => updateQuantity(menu.id, 1)}
-                          className="h-10 w-10 border-[2px] border-border bg-background text-foreground rounded-none hover:bg-primary hover:text-primary-foreground transition-all"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      )
                     ) : (
                       <Button
-                        onClick={() => addToCart(menu.id, menu.name, menu.price)}
-                        disabled={menu.soldOut}
-                        className="w-full h-12 border-[3px] border-black bg-black font-mono text-base font-bold uppercase text-white rounded-none hover:bg-white hover:text-black transition-colors"
+                        disabled
+                        className="w-full h-12 border-[3px] border-gray-300 bg-gray-100 font-mono text-base font-bold uppercase text-gray-400 rounded-none cursor-not-allowed"
                       >
-                        <ShoppingCart className="mr-2 h-5 w-5" />
-                        カートに追加
+                        注文は店頭受付のみ
                       </Button>
                     )}
                   </CardFooter>
@@ -442,30 +564,101 @@ function MenuPageContent() {
       </div>
 
       {/* 固定事前オーダーカートバー */}
-      {cart.length > 0 && (
+      {cart.length > 0 && preOrderSettings.enabled && (
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-black text-white border-t-[5px] border-black p-4 backdrop-blur-md">
           <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div>
-              <span className="bg-white text-black px-2 py-0.5 font-mono text-xs font-bold uppercase tracking-widest mr-2">
-                選択中 ({getTotalCount()}点)
-              </span>
-              <span className="font-mono text-2xl font-black">
-                合計: ¥{getTotalPrice().toLocaleString()}
-              </span>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="bg-white text-black px-2 py-0.5 font-mono text-xs font-bold uppercase tracking-widest">
+                  選択中 ({getTotalCount()}点)
+                </span>
+                <span className="font-mono text-2xl font-black">
+                  合計: ¥{getTotalPrice().toLocaleString()}
+                </span>
+              </div>
+              <p className="text-xs text-gray-300 font-mono">
+                {preOrderSettings.description}
+              </p>
             </div>
             <Button
-              onClick={() => preOrderMutation.mutate()}
-              disabled={preOrderMutation.isPending}
+              onClick={() => directOrderMutation.mutate()}
+              disabled={directOrderMutation.isPending}
               className="w-full sm:w-auto h-14 border-[3px] border-white bg-white px-8 font-mono text-lg font-black uppercase text-black rounded-none hover:bg-[#008000] hover:text-white transition-all shadow-none active:translate-y-1"
             >
               <CheckCircle className="mr-2 h-6 w-6" />
-              {preOrderMutation.isPending
+              {directOrderMutation.isPending
                 ? "送信中..."
-                : "【事前注文を確定する】"}
+                : `【${preOrderSettings.buttonText}】`}
             </Button>
           </div>
         </div>
       )}
+
+      {/* モバイルオーダー直接注文 完了モーダル (RawBlock Brutalist UI) */}
+      {successOrderInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 font-mono">
+          <div className="w-full max-w-md border-[5px] border-black bg-white p-6 space-y-4">
+            <div className="border-b-[3px] border-black pb-3">
+              <h3 className="font-black text-2xl uppercase text-black">[注文を送信しました]</h3>
+            </div>
+            
+            <div className="bg-[#FFFF00] border-[3px] border-black p-4 text-center space-y-2">
+              <p className="text-xs uppercase font-mono tracking-widest text-black/70 font-bold">呼出注文番号</p>
+              <p className="text-3xl font-black text-black tracking-wider">{successOrderInfo.orderNumber}</p>
+            </div>
+
+            <div className="space-y-2 text-sm text-black">
+              <div className="flex justify-between font-bold border-b border-black/10 pb-1">
+                <span>合計金額:</span>
+                <span>¥{successOrderInfo.totalPrice.toLocaleString()}</span>
+              </div>
+              <p className="text-xs text-gray-700 leading-relaxed font-bold">
+                ⚠️ 店頭レジにて上記の「注文番号」をスタッフに提示し、代金をお支払いください。お支払い完了後、調理を開始いたします。
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <Button
+                onClick={() => {
+                  setSuccessOrderInfo(null);
+                  router.push("/my-order");
+                }}
+                className="w-full h-12 border-[3px] border-black bg-black text-white text-base font-bold uppercase rounded-none hover:bg-white hover:text-black transition-all"
+              >
+                注文状況を確認する (履歴へ)
+              </Button>
+              <Button
+                onClick={() => setSuccessOrderInfo(null)}
+                className="w-full h-12 border-[3px] border-black bg-white text-black text-base font-bold uppercase rounded-none hover:bg-black hover:text-white transition-all"
+              >
+                メニューに戻る
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 外部モッドの動的ヘッダーインジェクション */}
+      {getActiveMods().map((mod: any) => (
+        mod.manifest?.hooks?.menuHeader ? (
+          <div
+            key={`${mod.manifest.id}-header`}
+            style={{ display: "none" }}
+            dangerouslySetInnerHTML={{ __html: mod.manifest.hooks.menuHeader }}
+          />
+        ) : null
+      ))}
+
+      {/* 外部モッドの動的ボディ末尾インジェクション */}
+      {getActiveMods().map((mod: any) => (
+        mod.manifest?.hooks?.menuBodyBottom ? (
+          <div
+            key={`${mod.manifest.id}-body-bottom`}
+            style={{ display: "none" }}
+            dangerouslySetInnerHTML={{ __html: mod.manifest.hooks.menuBodyBottom }}
+          />
+        ) : null
+      ))}
     </div>
   );
 }

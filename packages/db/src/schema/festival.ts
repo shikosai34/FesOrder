@@ -137,6 +137,7 @@ export const circle = sqliteTable(
     password: text("password").notNull(),
     iconImagePath: text("icon_image_path"),
     backgroundImagePath: text("background_image_path"),
+    mods: text("mods").default("{}").notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),

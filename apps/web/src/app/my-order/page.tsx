@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { preOrderApi, wristbandApi } from "@/lib/api";
+import { preOrderApi, wristbandApi, orderApi } from "@/lib/api";
 import { useGuestUser } from "@/hooks/useGuestUser";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -32,10 +32,53 @@ export default function MyOrderPage() {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [newWristbandId, setNewWristbandId] = useState("");
   const [origin, setOrigin] = useState("");
+  const [directOrders, setDirectOrders] = useState<Array<{
+    orderId: string;
+    orderNumber: string;
+    circleId: string;
+    circleName: string;
+    totalPrice: number;
+    createdAt: string;
+    status?: string;
+  }>>([]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setOrigin(window.location.origin);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      let intervalId: any;
+      const loadAndFetch = () => {
+        const stored = localStorage.getItem("fesorder_direct_orders");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setDirectOrders(parsed);
+          
+          const fetchStatuses = async () => {
+            const updated = await Promise.all(
+              parsed.map(async (o: any) => {
+                try {
+                  const detail = await orderApi.get(o.orderId);
+                  return { ...o, status: detail.status };
+                } catch (err) {
+                  return o;
+                }
+              })
+            );
+            setDirectOrders(updated);
+            localStorage.setItem("fesorder_direct_orders", JSON.stringify(updated));
+          };
+          fetchStatuses();
+        }
+      };
+
+      loadAndFetch();
+      // 10秒おきにステータスをポーリング
+      intervalId = setInterval(loadAndFetch, 10000);
+      return () => clearInterval(intervalId);
     }
   }, []);
 
@@ -252,6 +295,78 @@ export default function MyOrderPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* モバイルオーダー（店頭支払い）履歴 */}
+      {directOrders.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-black uppercase border-b-[3px] border-black pb-2">
+            [モバイルオーダー (店頭払い) 追跡]
+          </h2>
+          <div className="space-y-4">
+            {directOrders.map((doOrder) => (
+              <div
+                key={doOrder.orderId}
+                className="border-[4px] border-black bg-white p-5 space-y-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+              >
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b-[2px] border-black pb-2 gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {doOrder.status === "pending" && (
+                      <span className="bg-[#FFFF00] text-black border-[1.5px] border-black px-2 py-0.5 text-xs font-black uppercase flex items-center gap-1 font-bold">
+                        <Clock className="h-3.5 w-3.5" /> 店頭レジ未払い
+                      </span>
+                    )}
+                    {doOrder.status === "preparing" && (
+                      <span className="bg-[#0000FF] text-white px-2 py-0.5 text-xs font-black uppercase flex items-center gap-1 font-bold animate-pulse">
+                        <Clock className="h-3.5 w-3.5" /> 厨房で調理中
+                      </span>
+                    )}
+                    {(doOrder.status === "ready" || doOrder.status === "completed") && (
+                      <span className="bg-[#008000] text-white px-2 py-0.5 text-xs font-black uppercase flex items-center gap-1 font-bold">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> 受け取り可能！
+                      </span>
+                    )}
+                    {doOrder.status === "cancelled" && (
+                      <span className="bg-[#FF0000] text-white px-2 py-0.5 text-xs font-black uppercase flex items-center gap-1 font-bold">
+                        キャンセル
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-500 font-bold">
+                      {doOrder.circleName} ({new Date(doOrder.createdAt).toLocaleTimeString("ja-JP")})
+                    </span>
+                  </div>
+                  <span className="text-xl font-black">
+                    ¥{doOrder.totalPrice.toLocaleString()}
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <div className="bg-[#F0F0F0] p-3 border-[2px] border-black flex justify-between items-center">
+                    <div>
+                      <p className="text-xs text-gray-600 uppercase font-bold">呼出注文番号</p>
+                      <p className="text-2xl font-black text-black tracking-wider">{doOrder.orderNumber}</p>
+                    </div>
+                    {doOrder.status === "pending" && (
+                      <p className="text-xs text-right text-black font-bold leading-normal max-w-[200px]">
+                        ⚠️ レジでこの番号をスタッフに見せて代金を支払うと、調理が始まります。
+                      </p>
+                    )}
+                    {doOrder.status === "preparing" && (
+                      <p className="text-xs text-right text-blue-800 font-bold leading-normal max-w-[200px]">
+                        ただいま調理中です。もうしばらくお待ちください。
+                      </p>
+                    )}
+                    {(doOrder.status === "ready" || doOrder.status === "completed") && (
+                      <p className="text-xs text-right text-green-800 font-bold leading-normal max-w-[200px]">
+                        完成しました！受取口で注文番号を提示して商品をお受け取りください。
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 事前オーダー履歴一覧 */}
       <div className="space-y-4">

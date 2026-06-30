@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { CircleAuthGuard } from "@/hooks/useCircleAuth";
-import { menuApi, toppingApi, orderApi } from "@/lib/api";
+import { menuApi, toppingApi, orderApi, circleApi } from "@/lib/api";
 import { QrScannerModal } from "@/components/pos/qr-scanner-modal";
 import {
   Card,
@@ -47,11 +47,19 @@ function RegisterPageContent() {
     }
   }, []);
 
+  const { data: circle } = useQuery({
+    queryKey: ["circle", circleId],
+    queryFn: () => circleApi.get(circleId),
+    enabled: !!circleId,
+  });
+
   const { data: menus, isLoading: menusLoading } = useQuery({
     queryKey: ["menus", circleId],
     queryFn: () => menuApi.list(circleId),
     enabled: !!circleId,
   });
+
+
 
   const { data: toppings } = useQuery({
     queryKey: ["toppings", circleId],
@@ -77,6 +85,40 @@ function RegisterPageContent() {
       toast.error(error.message || "注文に失敗しました");
     },
   });
+
+  const isPreOrderEnabled = () => {
+    if (!circle || !circle.mods) return false;
+    try {
+      const parsed = JSON.parse(circle.mods);
+      const preOrderMod = parsed.installed?.["circle-pre-order-cod"];
+      return preOrderMod?.enabled ?? false;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const preOrderActive = isPreOrderEnabled();
+
+  const getActiveMods = () => {
+    if (!circle || !circle.mods) return [];
+    try {
+      const parsed = JSON.parse(circle.mods);
+      return Object.values(parsed.installed || {}).filter((m: any) => m.enabled);
+    } catch (e) {
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).FesOrderRegister = {
+        circleId,
+        circle,
+        menus,
+        toppings,
+      };
+    }
+  }, [circleId, circle, menus, toppings]);
 
   const addToCart = (menuId: string, menuName: string, menuPrice: number) => {
     const existingItem = cart.find((item) => item.menuId === menuId);
@@ -204,14 +246,24 @@ function RegisterPageContent() {
             <h1 className="font-mono text-2xl font-black uppercase tracking-wider">
               [レジ - 注文入力]
             </h1>
-            <Button
-              variant="accent"
-              onClick={() => setIsQrModalOpen(true)}
-              className="h-12 uppercase tracking-wider"
-            >
-              <QrCode className="mr-2 h-5 w-5" />
-              [QR / リストバンド照会]
-            </Button>
+            {preOrderActive && (
+              <Button
+                variant="accent"
+                onClick={() => setIsQrModalOpen(true)}
+                className="h-12 uppercase tracking-wider"
+              >
+                <QrCode className="mr-2 h-5 w-5" />
+                [QR / リストバンド照会]
+              </Button>
+            )}
+            {getActiveMods().map((mod: any) => (
+              mod.manifest?.hooks?.registerAction ? (
+                <div
+                  key={`${mod.manifest.id}-register-action`}
+                  dangerouslySetInnerHTML={{ __html: mod.manifest.hooks.registerAction }}
+                />
+              ) : null
+            ))}
           </div>
           <div className="grid gap-4 md:grid-cols-2">
 
@@ -419,6 +471,17 @@ function RegisterPageContent() {
           </Card>
         </div>
       </div>
+
+      {/* 外部モッドの動的ボディ末尾インジェクション */}
+      {getActiveMods().map((mod: any) => (
+        mod.manifest?.hooks?.registerBodyBottom ? (
+          <div
+            key={`${mod.manifest.id}-register-body-bottom`}
+            style={{ display: "none" }}
+            dangerouslySetInnerHTML={{ __html: mod.manifest.hooks.registerBodyBottom }}
+          />
+        ) : null
+      ))}
     </div>
   );
 }

@@ -31,21 +31,21 @@ export default function Header() {
     label: string;
     permission: string | null;
   }> = [
-    { to: "/menu", label: "メニュー", permission: null },
-    { to: "/my-order", label: "マイQR", permission: null },
-    {
-      to: "/register",
-      label: "レジ",
-      permission: "order:write",
-    },
-    { to: "/backyard", label: "厨房", permission: "order:read" },
-    {
-      to: "/dashboard",
-      label: "ダッシュボード",
-      permission: "circle:read",
-    },
-    { to: "/admin", label: "管理", permission: "event:write" },
-  ];
+      { to: "/menu", label: "メニュー", permission: null },
+      { to: "/my-order", label: "マイQR", permission: null },
+      {
+        to: "/register",
+        label: "レジ",
+        permission: "order:write",
+      },
+      { to: "/backyard", label: "厨房", permission: "order:read" },
+      {
+        to: "/dashboard",
+        label: "ダッシュボード",
+        permission: "circle:read",
+      },
+      { to: "/admin", label: "管理", permission: "event:write" },
+    ];
 
   const links = allLinks.filter(
     (link) => link.permission === null || hasPermission(role, link.permission, isEventAdmin)
@@ -77,11 +77,10 @@ export default function Header() {
             <Link
               key={to}
               href={to}
-              className={`px-3 py-1.5 border-[2px] border-border transition-all whitespace-nowrap ${
-                isActive(to)
-                  ? "bg-primary text-primary-foreground font-bold"
-                  : "bg-background text-foreground hover:bg-muted"
-              }`}
+              className={`px-3 py-1.5 border-[2px] border-border transition-all whitespace-nowrap ${isActive(to)
+                ? "bg-primary text-primary-foreground font-bold"
+                : "bg-background text-foreground hover:bg-muted"
+                }`}
             >
               {label}
             </Link>
