@@ -30,11 +30,11 @@ function SalesManagementContent() {
   });
 
   const totalSales =
-    orders?.reduce((sum, order) => sum + (order.totalAmount || 0), 0) || 0;
+    orders?.reduce((sum, order) => sum + (order.totalPrice || 0), 0) || 0;
   const completedOrders =
     orders?.filter((order) => order.status === "completed") || [];
   const completedSales = completedOrders.reduce(
-    (sum, order) => sum + (order.totalAmount || 0),
+    (sum, order) => sum + (order.totalPrice || 0),
     0
   );
 
@@ -110,7 +110,7 @@ function SalesManagementContent() {
                 </div>
                 <div className="text-right">
                   <p className="font-bold">
-                    ¥{(order.totalAmount ?? 0).toLocaleString()}
+                    ¥{(order.totalPrice ?? 0).toLocaleString()}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {order.status}

@@ -69,15 +69,15 @@ function CheckinContent() {
   if (!wristbandIdParam) {
     return (
       <div className="max-w-md mx-auto p-4 pt-16 font-mono text-center space-y-6">
-        <div className="border-[5px] border-black bg-white p-8 space-y-4">
-          <QrCode className="h-16 w-16 mx-auto text-black" />
+        <div className="border-heavy border-border bg-background p-8 space-y-4">
+          <QrCode className="h-16 w-16 mx-auto text-foreground" />
           <h1 className="text-2xl font-black uppercase">[来場時チェックイン]</h1>
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-muted-foreground">
             リストバンドのQRコードをスマートフォンでスキャンしてアクセスしてください。
           </p>
           <Button
             onClick={() => router.push("/my-order")}
-            className="w-full h-12 border-[3px] border-black bg-black text-white font-bold uppercase rounded-none hover:bg-white hover:text-black"
+            className="w-full h-12 border-thick border-border bg-primary text-primary-foreground font-bold uppercase rounded-none hover:bg-background hover:text-foreground"
           >
             マイページ（マイQR）へ移動
           </Button>
@@ -88,36 +88,36 @@ function CheckinContent() {
 
   return (
     <div className="max-w-md mx-auto p-4 pt-12 font-mono text-center space-y-6">
-      <div className="border-[6px] border-black bg-black text-white p-8 space-y-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-        <div className="bg-white text-black p-4 inline-block border-[3px] border-white">
-          <UserCheck className="h-16 w-16 text-black" />
+      <div className="border-[6px] border-border bg-primary text-primary-foreground p-8 space-y-6 shadow-[8px_8px_0px_0px_var(--border)]">
+        <div className="bg-background text-foreground p-4 inline-block border-[3px] border-border">
+          <UserCheck className="h-16 w-16 text-foreground" />
         </div>
 
         <div className="space-y-2">
-          <span className="bg-white text-black px-3 py-1 text-xs font-black uppercase tracking-widest inline-block">
+          <span className="bg-background text-foreground px-3 py-1 text-xs font-black uppercase tracking-widest inline-block">
             CHECK-IN SUCCESSFUL
           </span>
           <h1 className="text-3xl font-black uppercase tracking-wider">
             来場チェックイン完了！
           </h1>
-          <p className="text-xs text-gray-300">
-            リストバンド (ID: <span className="text-white font-bold">{wristbandIdParam}</span>) がアカウントに正常に紐付けられました。
+          <p className="text-xs text-primary-foreground/80">
+            リストバンド (ID: <span className="text-primary-foreground font-bold">{wristbandIdParam}</span>) がアカウントに正常に紐付けられました。
           </p>
         </div>
 
-        <div className="bg-white/10 p-4 border-[2px] border-white/20 text-xs text-left space-y-2">
-          <div className="flex items-center gap-2 text-white font-bold">
-            <ShieldCheck className="h-4 w-4 text-[#00FF00]" />
+        <div className="bg-background/10 p-4 border-[2px] border-border/20 text-xs text-left space-y-2">
+          <div className="flex items-center gap-2 text-primary-foreground font-bold">
+            <ShieldCheck className="h-4 w-4 text-success" />
             セキュリティ保護有効
           </div>
-          <p className="text-gray-300">
+          <p className="text-primary-foreground/80">
             万が一リストバンドを紛失した場合でも、マイページからいつでもロック・即時無効化が可能です。
           </p>
         </div>
 
         <Button
           onClick={() => router.push("/my-order")}
-          className="w-full h-14 border-[3px] border-white bg-white text-black text-lg font-black uppercase rounded-none hover:bg-[#008000] hover:text-white transition-all"
+          className="w-full h-14 border-thick border-border bg-background text-foreground text-lg font-black uppercase rounded-none hover:bg-success hover:text-primary-foreground transition-all"
         >
           マイページ（マイQR）へ進む
           <ArrowRight className="ml-2 h-6 w-6" />

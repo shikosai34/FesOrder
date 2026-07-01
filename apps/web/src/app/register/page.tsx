@@ -4,12 +4,11 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { CircleAuthGuard } from "@/hooks/useCircleAuth";
 import { menuApi, toppingApi, orderApi, circleApi } from "@/lib/api";
+import { ModSandbox } from "@/components/ModSandbox";
 import { QrScannerModal } from "@/components/pos/qr-scanner-modal";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -19,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import Image from "next/image";
-import { Minus, Plus, ShoppingCart, Trash2, QrCode } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Trash2, QrCode, X } from "lucide-react";
 
 interface CartItem {
   menuId: string;
@@ -38,13 +37,11 @@ function RegisterPageContent() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [peopleCount, setPeopleCount] = useState(1);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-
+  const [isCartPanelOpen, setIsCartPanelOpen] = useState(false);
 
   useEffect(() => {
     const storedCircleId = localStorage.getItem("circleId");
-    if (storedCircleId) {
-      setCircleId(storedCircleId);
-    }
+    if (storedCircleId) setCircleId(storedCircleId);
   }, []);
 
   const { data: circle } = useQuery({
@@ -59,8 +56,6 @@ function RegisterPageContent() {
     enabled: !!circleId,
   });
 
-
-
   const { data: toppings } = useQuery({
     queryKey: ["toppings", circleId],
     queryFn: () => toppingApi.list(circleId),
@@ -72,14 +67,12 @@ function RegisterPageContent() {
       circleId: string;
       peopleCount: number;
       items: { menuId: string; quantity: number; toppingIds?: string[] }[];
-      notes?: string;
-    }) => {
-      return await orderApi.create(input);
-    },
+    }) => orderApi.create(input),
     onSuccess: (data) => {
-      toast.success(`注文が完了しました！注文番号: ${data.orderNumber}`);
+      toast.success(`注文完了！注文番号: ${data.orderNumber}`);
       setCart([]);
       setPeopleCount(1);
+      setIsCartPanelOpen(false);
     },
     onError: (error: any) => {
       toast.error(error.message || "注文に失敗しました");
@@ -87,401 +80,343 @@ function RegisterPageContent() {
   });
 
   const isPreOrderEnabled = () => {
-    if (!circle || !circle.mods) return false;
+    if (!circle?.mods) return false;
     try {
       const parsed = JSON.parse(circle.mods);
-      const preOrderMod = parsed.installed?.["circle-pre-order-cod"];
-      return preOrderMod?.enabled ?? false;
-    } catch (e) {
-      return false;
-    }
+      return parsed.installed?.["circle-pre-order-cod"]?.enabled ?? false;
+    } catch { return false; }
   };
 
-  const preOrderActive = isPreOrderEnabled();
-
   const getActiveMods = () => {
-    if (!circle || !circle.mods) return [];
+    if (!circle?.mods) return [];
     try {
       const parsed = JSON.parse(circle.mods);
       return Object.values(parsed.installed || {}).filter((m: any) => m.enabled);
-    } catch (e) {
-      return [];
-    }
+    } catch { return []; }
   };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      (window as any).FesOrderRegister = {
-        circleId,
-        circle,
-        menus,
-        toppings,
-      };
+      (window as any).FesOrderRegister = { circleId, circle, menus, toppings };
     }
   }, [circleId, circle, menus, toppings]);
 
   const addToCart = (menuId: string, menuName: string, menuPrice: number) => {
-    const existingItem = cart.find((item) => item.menuId === menuId);
-    if (existingItem) {
-      setCart(
-        cart.map((item) =>
-          item.menuId === menuId
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      );
-    } else {
-      setCart([
-        ...cart,
-        { menuId, menuName, menuPrice, quantity: 1, toppings: [] },
-      ]);
-    }
-    toast.success(`${menuName}をカートに追加しました`);
+    setCart((prev) => {
+      const existing = prev.find((i) => i.menuId === menuId);
+      if (existing) return prev.map((i) => i.menuId === menuId ? { ...i, quantity: i.quantity + 1 } : i);
+      return [...prev, { menuId, menuName, menuPrice, quantity: 1, toppings: [] }];
+    });
+    toast.success(`${menuName}をカートに追加`);
   };
 
-  const removeFromCart = (menuId: string) => {
-    setCart(cart.filter((item) => item.menuId !== menuId));
-  };
+  const removeFromCart = (menuId: string) => setCart((prev) => prev.filter((i) => i.menuId !== menuId));
 
   const updateQuantity = (menuId: string, delta: number) => {
-    setCart(
-      cart
-        .map((item) =>
-          item.menuId === menuId
-            ? { ...item, quantity: Math.max(0, item.quantity + delta) }
-            : item
-        )
-        .filter((item) => item.quantity > 0)
+    setCart((prev) =>
+      prev.map((i) => i.menuId === menuId ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i)
+        .filter((i) => i.quantity > 0)
     );
   };
 
-  const addToppingToItem = (
-    menuId: string,
-    toppingId: string,
-    toppingName: string,
-    toppingPrice: number
-  ) => {
-    setCart(
-      cart.map((item) => {
-        if (item.menuId === menuId) {
-          const hasToppingAlready = item.toppings.some(
-            (t) => t.toppingId === toppingId
-          );
-          if (hasToppingAlready) {
-            return {
-              ...item,
-              toppings: item.toppings.filter((t) => t.toppingId !== toppingId),
-            };
-          } else {
-            return {
-              ...item,
-              toppings: [
-                ...item.toppings,
-                { toppingId, toppingName, toppingPrice },
-              ],
-            };
-          }
-        }
-        return item;
+  const addToppingToItem = (menuId: string, toppingId: string, toppingName: string, toppingPrice: number) => {
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.menuId !== menuId) return item;
+        const has = item.toppings.some((t) => t.toppingId === toppingId);
+        return {
+          ...item,
+          toppings: has
+            ? item.toppings.filter((t) => t.toppingId !== toppingId)
+            : [...item.toppings, { toppingId, toppingName, toppingPrice }],
+        };
       })
     );
   };
 
-  const getTotalPrice = () => {
-    return cart.reduce((total, item) => {
-      const itemPrice = item.menuPrice * item.quantity;
-      const toppingsPrice =
-        item.toppings.reduce((sum, topping) => sum + topping.toppingPrice, 0) *
-        item.quantity;
-      return total + itemPrice + toppingsPrice;
+  const getTotalPrice = () =>
+    cart.reduce((total, item) => {
+      const base = item.menuPrice * item.quantity;
+      const tops = item.toppings.reduce((s, t) => s + t.toppingPrice, 0) * item.quantity;
+      return total + base + tops;
     }, 0);
-  };
+
+  const getTotalCount = () => cart.reduce((s, i) => s + i.quantity, 0);
 
   const handleSubmitOrder = async () => {
-    if (cart.length === 0) {
-      toast.error("カートが空です");
-      return;
-    }
-
+    if (cart.length === 0) { toast.error("カートが空です"); return; }
     await createOrder.mutateAsync({
       circleId,
       peopleCount,
-      items: cart.map((item) => ({
-        menuId: item.menuId,
-        quantity: item.quantity,
-        toppingIds: item.toppings.map((t) => t.toppingId),
-      })),
+      items: cart.map((i) => ({ menuId: i.menuId, quantity: i.quantity, toppingIds: i.toppings.map((t) => t.toppingId) })),
     });
   };
 
-  const clearCart = () => {
-    setCart([]);
-    toast.info("カートをクリアしました");
-  };
+  const clearCart = () => { setCart([]); toast.info("カートをクリア"); };
 
   if (menusLoading) {
     return (
-      <div className="container mx-auto p-4 space-y-4">
+      <div className="p-4 space-y-4">
         <Skeleton className="h-12 w-64" />
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-64" />
-          ))}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => <Skeleton key={i} className="h-64" />)}
         </div>
       </div>
     );
   }
 
+  const preOrderActive = isPreOrderEnabled();
+
   return (
-    <div className="container mx-auto p-4">
-      <QrScannerModal
-        circleId={circleId}
-        isOpen={isQrModalOpen}
-        onClose={() => setIsQrModalOpen(false)}
-      />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* メニュー一覧 */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-primary p-4 text-primary-foreground border-[3px] border-border">
-            <h1 className="font-mono text-2xl font-black uppercase tracking-wider">
-              [レジ - 注文入力]
-            </h1>
+    <div className="relative">
+      <QrScannerModal circleId={circleId} isOpen={isQrModalOpen} onClose={() => setIsQrModalOpen(false)} />
+
+      {/* ===== メニュー一覧 ===== */}
+      <div className="p-3 sm:p-4 pb-32">
+        {/* ヘッダーバー */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 bg-primary p-3 sm:p-4 text-primary-foreground border-[3px] border-border mb-4">
+          <h1 className="font-mono text-lg sm:text-2xl font-black uppercase tracking-wider">
+            [レジ - 注文入力]
+          </h1>
+          <div className="flex gap-2 flex-wrap">
             {preOrderActive && (
               <Button
                 variant="accent"
                 onClick={() => setIsQrModalOpen(true)}
-                className="h-12 uppercase tracking-wider"
+                className="h-10 sm:h-12 text-xs sm:text-sm uppercase tracking-wider"
               >
-                <QrCode className="mr-2 h-5 w-5" />
-                [QR / リストバンド照会]
+                <QrCode className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                [QR照会]
               </Button>
             )}
-            {getActiveMods().map((mod: any) => (
-              mod.manifest?.hooks?.registerAction ? (
-                <div
-                  key={`${mod.manifest.id}-register-action`}
-                  dangerouslySetInnerHTML={{ __html: mod.manifest.hooks.registerAction }}
-                />
-              ) : null
-            ))}
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-
-            {menus?.map((menu) => (
-              <Card key={menu.id} className={menu.soldOut ? "opacity-60" : ""}>
-                <CardHeader>
-                  <div className="relative h-40 w-full overflow-hidden">
-                    {menu.imagePath ? (
-                      <Image
-                        src={menu.imagePath}
-                        alt={menu.name}
-                        fill
-                        className="object-cover transition-transform duration-500 hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
-                        <span className="text-muted-foreground/50 font-medium">No Image</span>
-                      </div>
-                    )}
-                    {menu.soldOut && (
-                      <div className="absolute top-2 right-2 bg-destructive/90 text-destructive-foreground px-3 py-1 rounded-full text-sm font-bold shadow-sm backdrop-blur-sm">
-                        売り切れ
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <CardTitle className="text-lg mb-1">{menu.name}</CardTitle>
-                  <p className="text-xl font-bold text-primary">
-                    ¥{menu.price.toLocaleString()}
-                  </p>
-                  {menu.stockQuantity != null && menu.stockQuantity > 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      在庫: {menu.stockQuantity}個
-                    </p>
-                  )}
-                </CardContent>
-                <CardFooter>
-                  <Button
-                    className="w-full"
-                    onClick={() => addToCart(menu.id, menu.name, menu.price)}
-                    disabled={menu.soldOut}
-                  >
-                    <ShoppingCart className="mr-2 h-4 w-4" />
-                    カートに追加
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
+            {getActiveMods().map((mod: any) => {
+              const hook = mod.manifest?.hooks?.registerAction;
+              if (!hook) return null;
+              return (
+                <div key={`${mod.manifest.id}-register-action`}>
+                  <ModSandbox
+                    modId={mod.manifest.id}
+                    hookName="registerAction"
+                    html={typeof hook === "string" ? hook : undefined}
+                    jsUrl={typeof hook === "object" ? hook.js : undefined}
+                    cssUrl={typeof hook === "object" ? hook.css : undefined}
+                    data={{ circleId, circle, menus, toppings, cart }}
+                    onAction={(actionType, payload) => {
+                      if (actionType === "ADD_TO_CART") addToCart(payload.menuId, payload.menuName, payload.menuPrice);
+                      else if (actionType === "CLEAR_CART") clearCart();
+                    }}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* カート */}
-        <div className="lg:col-span-1">
-          <Card className="sticky top-20 glass-card border-primary/20 shadow-lg h-[calc(100vh-6rem)] flex flex-col">
-            <CardHeader className="bg-primary/5 pb-4 border-b">
-              <CardTitle className="flex items-center">
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                カート
-              </CardTitle>
-              <CardDescription>{cart.length}個の商品</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {cart.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                  <ShoppingCart className="h-16 w-16 mb-4 opacity-20" />
-                  <p>カートが空です</p>
-                </div>
-              ) : (
-                <>
-                  <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
-                    {cart.map((item) => (
-                      <div
-                        key={item.menuId}
-                        className="bg-card border rounded-xl p-4 space-y-3 shadow-sm hover:shadow-md transition-shadow relative"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-semibold">{item.menuName}</p>
-                            <p className="text-sm text-muted-foreground">
-                              ¥{item.menuPrice.toLocaleString()}
-                            </p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeFromCart(item.menuId)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-
-                        {/* トッピング選択 */}
-                        {toppings && toppings.length > 0 && (
-                          <div className="space-y-1">
-                            <p className="text-xs font-semibold">トッピング:</p>
-                            {toppings.map((topping) => (
-                              <label
-                                key={topping.id}
-                                className="flex items-center space-x-2 text-sm"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={item.toppings.some(
-                                    (t) => t.toppingId === topping.id
-                                  )}
-                                  onChange={() =>
-                                    addToppingToItem(
-                                      item.menuId,
-                                      topping.id,
-                                      topping.name,
-                                      topping.price
-                                    )
-                                  }
-                                  disabled={topping.soldOut}
-                                />
-                                <span>
-                                  {topping.name} (+¥{topping.price})
-                                </span>
-                              </label>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* 数量調整 */}
-                        <div className="flex items-center justify-between pt-2">
-                          <div className="flex items-center space-x-3 bg-secondary/50 rounded-lg p-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-10 w-10 rounded-md hover:bg-background"
-                              onClick={() => updateQuantity(item.menuId, -1)}
-                            >
-                              <Minus className="h-5 w-5" />
-                            </Button>
-                            <span className="font-bold text-lg w-8 text-center tabular-nums">
-                              {item.quantity}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-10 w-10 rounded-md hover:bg-background"
-                              onClick={() => updateQuantity(item.menuId, 1)}
-                            >
-                              <Plus className="h-5 w-5" />
-                            </Button>
-                          </div>
-                          <p className="font-semibold">
-                            ¥
-                            {(
-                              (item.menuPrice +
-                                item.toppings.reduce(
-                                  (sum, t) => sum + t.toppingPrice,
-                                  0
-                                )) *
-                              item.quantity
-                            ).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* 人数入力 */}
-                  <div className="space-y-2 bg-secondary/20 p-4 rounded-xl mt-4">
-                    <Label htmlFor="peopleCount" className="text-sm font-bold">来店人数</Label>
-                    <Input
-                      id="peopleCount"
-                      type="number"
-                      min="1"
-                      className="text-lg text-center font-bold h-12"
-                      value={peopleCount}
-                      onChange={(e) => setPeopleCount(Number(e.target.value))}
-                    />
-                  </div>
-
-                  {/* 合計金額 */}
-                  <div className="border-t pt-4 mt-2">
-                    <div className="flex justify-between items-end text-xl">
-                      <span className="text-muted-foreground font-medium">合計金額</span>
-                      <span className="text-3xl font-black text-primary">¥{getTotalPrice().toLocaleString()}</span>
+        {/* メニューグリッド */}
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3">
+          {menus?.map((menu) => (
+            <Card key={menu.id} className={menu.soldOut ? "opacity-60" : ""}>
+              <CardHeader className="p-0">
+                <div className="relative h-32 sm:h-40 w-full overflow-hidden border-b-[3px] border-border">
+                  {menu.imagePath ? (
+                    <Image src={menu.imagePath} alt={menu.name} fill className="object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-muted">
+                      <span className="font-mono text-[11px] sm:text-[14px] uppercase tracking-[1px]">No Image</span>
                     </div>
+                  )}
+                  {menu.soldOut && (
+                    <div className="absolute inset-0 bg-foreground/85 flex items-center justify-center">
+                      <span className="text-background text-[18px] sm:text-[24px] font-headline uppercase tracking-[2px]">売り切れ</span>
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="p-2 sm:p-4 space-y-2">
+                <CardTitle className="text-sm sm:text-lg leading-tight">{menu.name}</CardTitle>
+                <p className="text-lg sm:text-xl font-headline">¥{menu.price.toLocaleString()}</p>
+                {menu.stockQuantity != null && menu.stockQuantity > 0 && (
+                  <p className="text-xs font-mono text-muted-foreground">在庫: {menu.stockQuantity}個</p>
+                )}
+                <Button
+                  className="w-full h-10 sm:h-11 border-[3px] border-border bg-primary text-primary-foreground font-mono text-xs sm:text-sm font-bold uppercase rounded-none hover:bg-background hover:text-foreground transition-all"
+                  onClick={() => addToCart(menu.id, menu.name, menu.price)}
+                  disabled={menu.soldOut}
+                >
+                  <ShoppingCart className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                  追加
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* 外部モッドインジェクション */}
+        {getActiveMods().map((mod: any) => {
+          const hook = mod.manifest?.hooks?.registerBodyBottom;
+          if (!hook) return null;
+          return (
+            <div key={`${mod.manifest.id}-register-body-bottom`} className="w-full mt-4">
+              <ModSandbox
+                modId={mod.manifest.id}
+                hookName="registerBodyBottom"
+                html={typeof hook === "string" ? hook : undefined}
+                jsUrl={typeof hook === "object" ? hook.js : undefined}
+                cssUrl={typeof hook === "object" ? hook.css : undefined}
+                data={{ circleId, circle, menus, toppings, cart }}
+                onAction={(actionType, payload) => {
+                  if (actionType === "ADD_TO_CART") addToCart(payload.menuId, payload.menuName, payload.menuPrice);
+                  else if (actionType === "CLEAR_CART") clearCart();
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ===== モバイル固定カートフッターバー ===== */}
+      {cart.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-primary text-primary-foreground border-t-[5px] border-border">
+          <button
+            onClick={() => setIsCartPanelOpen(true)}
+            className="w-full flex items-center justify-between px-4 py-3 sm:py-4 font-mono"
+          >
+            <div className="flex items-center gap-3">
+              <span className="bg-background text-foreground px-2 py-0.5 text-xs font-black uppercase">
+                {getTotalCount()}点
+              </span>
+              <span className="text-xl sm:text-2xl font-black">
+                ¥{getTotalPrice().toLocaleString()}
+              </span>
+            </div>
+            <span className="flex items-center gap-2 border-[3px] border-primary-foreground px-4 py-2 font-black uppercase text-sm tracking-wider hover:bg-primary-foreground hover:text-primary transition-all">
+              <ShoppingCart className="h-4 w-4" />
+              カートを見る
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* ===== カートパネル（スライドアップ） ===== */}
+      {isCartPanelOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          {/* オーバーレイ */}
+          <div
+            className="absolute inset-0 bg-foreground/60"
+            onClick={() => setIsCartPanelOpen(false)}
+          />
+          {/* パネル本体 */}
+          <div className="relative w-full sm:max-w-lg bg-background border-t-[5px] sm:border-[5px] border-border max-h-[90vh] flex flex-col font-mono">
+            {/* パネルヘッダー */}
+            <div className="flex items-center justify-between px-4 py-3 border-b-[3px] border-border bg-primary text-primary-foreground">
+              <h2 className="font-black text-lg uppercase">[カート確認]</h2>
+              <button
+                onClick={() => setIsCartPanelOpen(false)}
+                className="w-10 h-10 border-[2px] border-primary-foreground flex items-center justify-center hover:bg-primary-foreground hover:text-primary transition-all"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* カートアイテム一覧 */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {cart.map((item) => (
+                <div key={item.menuId} className="border-[3px] border-border p-3 space-y-3">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm truncate">{item.menuName}</p>
+                      <p className="text-xs text-muted-foreground">¥{item.menuPrice.toLocaleString()}</p>
+                    </div>
+                    <button
+                      onClick={() => removeFromCart(item.menuId)}
+                      className="w-8 h-8 border-[2px] border-border flex items-center justify-center hover:bg-error hover:text-white shrink-0 transition-all"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
                   </div>
-                </>
-              )}
-            </CardContent>
-            <CardFooter className="flex flex-col gap-3 bg-background/50 backdrop-blur-md pt-4 border-t mt-auto rounded-b-xl">
+
+                  {/* トッピング */}
+                  {toppings && toppings.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold uppercase tracking-wider">トッピング:</p>
+                      {toppings.map((topping) => (
+                        <label key={topping.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={item.toppings.some((t) => t.toppingId === topping.id)}
+                            onChange={() => addToppingToItem(item.menuId, topping.id, topping.name, topping.price)}
+                            disabled={topping.soldOut}
+                            className="w-4 h-4"
+                          />
+                          <span>{topping.name} (+¥{topping.price})</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 数量 */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center border-[2px] border-border">
+                      <button
+                        onClick={() => updateQuantity(item.menuId, -1)}
+                        className="w-10 h-10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all border-r-[2px] border-border"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <span className="w-10 text-center font-black text-lg">{item.quantity}</span>
+                      <button
+                        onClick={() => updateQuantity(item.menuId, 1)}
+                        className="w-10 h-10 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all border-l-[2px] border-border"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <p className="font-bold">
+                      ¥{((item.menuPrice + item.toppings.reduce((s, t) => s + t.toppingPrice, 0)) * item.quantity).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* パネルフッター */}
+            <div className="p-4 border-t-[3px] border-border space-y-3 bg-background">
+              {/* 人数 */}
+              <div className="flex items-center gap-3">
+                <Label htmlFor="peopleCount" className="font-mono text-xs uppercase tracking-wider whitespace-nowrap">来店人数</Label>
+                <Input
+                  id="peopleCount"
+                  type="number"
+                  min="1"
+                  className="h-10 text-center font-bold border-[3px] border-border rounded-none"
+                  value={peopleCount}
+                  onChange={(e) => setPeopleCount(Number(e.target.value))}
+                />
+              </div>
+              {/* 合計 */}
+              <div className="flex justify-between items-center border-[3px] border-border px-4 py-3 bg-muted">
+                <span className="font-mono text-sm uppercase tracking-wider">合計金額</span>
+                <span className="font-headline text-2xl sm:text-3xl font-black">¥{getTotalPrice().toLocaleString()}</span>
+              </div>
+              {/* ボタン群 */}
               <Button
-                className="w-full h-14 text-lg font-bold rounded-xl shadow-lg shadow-primary/20"
+                className="w-full h-14 border-[3px] border-border bg-primary text-primary-foreground font-mono text-base font-black uppercase rounded-none hover:bg-background hover:text-foreground transition-all"
                 onClick={handleSubmitOrder}
                 disabled={cart.length === 0 || createOrder.isPending}
               >
-                {createOrder.isPending ? "注文中..." : "注文を確定"}
+                {createOrder.isPending ? "注文中..." : "注文を確定する"}
               </Button>
-              {cart.length > 0 && (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={clearCart}
-                >
-                  カートをクリア
-                </Button>
-              )}
-            </CardFooter>
-          </Card>
+              <Button
+                variant="outline"
+                className="w-full border-[3px] border-border rounded-none font-mono uppercase"
+                onClick={clearCart}
+              >
+                カートをクリア
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* 外部モッドの動的ボディ末尾インジェクション */}
-      {getActiveMods().map((mod: any) => (
-        mod.manifest?.hooks?.registerBodyBottom ? (
-          <div
-            key={`${mod.manifest.id}-register-body-bottom`}
-            style={{ display: "none" }}
-            dangerouslySetInnerHTML={{ __html: mod.manifest.hooks.registerBodyBottom }}
-          />
-        ) : null
-      ))}
+      )}
     </div>
   );
 }

@@ -1,8 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useState } from "react";
 import { type EventTheme } from "@/lib/api";
-
 
 interface ThemeContextType {
   theme: EventTheme;
@@ -34,11 +33,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     ...defaultTheme,
     ...(previewTheme || {}),
   };
-
-  useEffect(() => {
-    // テーマによる動的CSS変数上書きを無効化し、デフォルトのindex.cssに統一
-  }, []);
-
 
   return (
     <ThemeContext.Provider value={{ theme: activeTheme, setPreviewTheme }}>

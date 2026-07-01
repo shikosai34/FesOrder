@@ -33,9 +33,9 @@ export default function TestWristbandsPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6 pb-24 font-mono">
-      <div className="border-b-[3px] border-black pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="border-b-thick border-border pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <span className="bg-black text-white px-2 py-0.5 text-xs font-black uppercase tracking-widest">
+          <span className="bg-primary text-primary-foreground px-2 py-0.5 text-xs font-black uppercase tracking-widest">
             DEV / TESTING TOOL
           </span>
           <h1 className="text-3xl font-black uppercase tracking-tight mt-1">
@@ -46,7 +46,7 @@ export default function TestWristbandsPage() {
           </p>
         </div>
         <Link href="/register">
-          <Button className="h-12 border-[3px] border-black bg-black text-white font-bold uppercase rounded-none hover:bg-white hover:text-black">
+          <Button className="h-12 border-thick border-border bg-primary text-primary-foreground font-bold uppercase rounded-none hover:bg-background hover:text-foreground">
             レジ画面で検証する
           </Button>
         </Link>
@@ -62,9 +62,9 @@ export default function TestWristbandsPage() {
           return (
             <Card
               key={band.id}
-              className="border-[4px] border-black bg-white rounded-none p-4 shadow-none space-y-4 text-center"
+              className="border-thick border-border bg-background rounded-none p-4 shadow-none space-y-4 text-center"
             >
-              <CardHeader className="p-0 border-b-[2px] border-black pb-2">
+              <CardHeader className="p-0 border-b-[2px] border-border pb-2">
                 <CardTitle className="text-base font-bold uppercase">
                   {band.name}
                 </CardTitle>
@@ -73,7 +73,7 @@ export default function TestWristbandsPage() {
 
               <CardContent className="p-0 space-y-4 pt-2">
                 {/* QRコード画像 */}
-                <div className="bg-white p-3 inline-block border-[3px] border-black">
+                <div className="bg-background p-3 inline-block border-thick border-border">
                   <img
                     src={qrImageUrl}
                     alt={band.id}
@@ -87,14 +87,14 @@ export default function TestWristbandsPage() {
                   <Button
                     onClick={() => copyToClipboard(band.id)}
                     variant="outline"
-                    className="w-full h-10 border-[2px] border-black text-xs font-bold uppercase rounded-none hover:bg-black hover:text-white"
+                    className="w-full h-10 border-[2px] border-border bg-background text-foreground text-xs font-bold uppercase rounded-none hover:bg-primary hover:text-primary-foreground"
                   >
                     <Copy className="mr-1.5 h-3.5 w-3.5" />
                     IDコードをコピー (レジ用)
                   </Button>
 
                   <Link href={`/checkin?wb=${band.id}`} target="_blank">
-                    <Button className="w-full h-10 border-[2px] border-black bg-black text-white text-xs font-bold uppercase rounded-none hover:bg-white hover:text-black mt-2">
+                    <Button className="w-full h-10 border-[2px] border-border bg-primary text-primary-foreground text-xs font-bold uppercase rounded-none hover:bg-background hover:text-foreground mt-2">
                       <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                       チェックインを試す
                     </Button>

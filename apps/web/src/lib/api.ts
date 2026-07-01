@@ -371,7 +371,7 @@ export interface Order {
   staffId: string | null;
   orderNumber: string;
   status: OrderStatus;
-  totalAmount: number;
+  totalPrice: number;
   notes: string | null;
   estimatedMinutes: number | null;
   createdAt: Date | null;

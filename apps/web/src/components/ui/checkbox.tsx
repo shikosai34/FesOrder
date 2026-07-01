@@ -15,7 +15,7 @@ function Checkbox({
 				"peer size-[20px] shrink-0 border-border border-thick bg-background transition-all outline-none",
 				"data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
 				"focus-visible:border-heavy focus-visible:ring-0",
-				"disabled:cursor-not-allowed disabled:border-muted disabled:bg-muted",
+				"disabled:cursor-not-allowed disabled:border-border-disabled disabled:bg-input-disabled",
 				className,
 			)}
 			{...props}

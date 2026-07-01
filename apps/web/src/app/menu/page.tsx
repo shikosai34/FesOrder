@@ -2,6 +2,8 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Script from "next/script";
+import { ModSandbox } from "@/components/ModSandbox";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { eventApi, circleApi, menuApi, preOrderApi, orderApi } from "@/lib/api";
 import { useGuestUser } from "@/hooks/useGuestUser";
@@ -97,14 +99,8 @@ function MenuPageContent() {
     },
   });
 
-  const [successOrderInfo, setSuccessOrderInfo] = useState<{
-    orderId: string;
-    orderNumber: string;
-    totalPrice: number;
-  } | null>(null);
-
-  // 直接注文作成ミューテーション (店頭代引きモバイルオーダー用)
-  const directOrderMutation = useMutation({
+  // 代引オーダー（本注文）作成ミューテーション
+  const codOrderMutation = useMutation({
     mutationFn: async () => {
       if (!selectedCircleId || cart.length === 0) return;
       return await orderApi.create({
@@ -114,40 +110,36 @@ function MenuPageContent() {
           menuId: item.menuId,
           quantity: item.quantity,
         })),
-        userId: userId || undefined,
       });
     },
-    onSuccess: (data) => {
-      if (typeof window !== "undefined") {
-        try {
-          const stored = localStorage.getItem("fesorder_direct_orders");
-          const orders = stored ? JSON.parse(stored) : [];
-          orders.push({
-            orderId: data.id,
-            orderNumber: data.orderNumber,
-            circleId: selectedCircleId,
-            circleName: circleData?.name || "サークル",
-            totalPrice: getTotalPrice(),
-            createdAt: new Date().toISOString(),
-          });
-          localStorage.setItem("fesorder_direct_orders", JSON.stringify(orders));
-        } catch (e) {
-          console.error("Failed to save direct order locally:", e);
-        }
-      }
+    onSuccess: (orderData) => {
+      if (!orderData) return;
+      try {
+        const stored = localStorage.getItem("fesorder_direct_orders");
+        const directOrders = stored ? JSON.parse(stored) : [];
+        directOrders.push({
+          orderId: orderData.id,
+          orderNumber: orderData.orderNumber,
+          circleId: selectedCircleId,
+          circleName: circleData?.name || "サークル",
+          totalPrice: getTotalPrice(),
+          createdAt: new Date().toISOString()
+        });
+        localStorage.setItem("fesorder_direct_orders", JSON.stringify(directOrders));
+      } catch (e) {}
 
-      setSuccessOrderInfo({
-        orderId: data.id,
-        orderNumber: data.orderNumber,
-        totalPrice: getTotalPrice(),
-      });
+      toast.success(`注文を受け付けました！呼出番号: ${orderData.orderNumber}`);
       setCart([]);
-      toast.success("注文を送信しました！");
+      router.push("/my-order");
     },
     onError: (error: any) => {
       toast.error(error.message || "注文の送信に失敗しました");
     },
   });
+
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
+
 
   const addToCart = (menuId: string, menuName: string, menuPrice: number) => {
     const existing = cart.find((i) => i.menuId === menuId);
@@ -176,28 +168,6 @@ function MenuPageContent() {
   const getTotalCount = () => cart.reduce((sum, i) => sum + i.quantity, 0);
   const getTotalPrice = () => cart.reduce((sum, i) => sum + i.menuPrice * i.quantity, 0);
 
-  const getPreOrderModSettings = () => {
-    if (!circleData || !circleData.mods) {
-      return { enabled: false, buttonText: "事前注文する(店頭決済)", description: "並ばずに事前注文できます。店頭のレジで注文番号を提示し、お支払いください。" };
-    }
-    try {
-      const parsed = JSON.parse(circleData.mods);
-      const preOrderMod = parsed.installed?.["circle-pre-order-cod"];
-      if (preOrderMod) {
-        return {
-          enabled: preOrderMod.enabled ?? false,
-          buttonText: preOrderMod.settings?.buttonText ?? "事前注文する(店頭決済)",
-          description: preOrderMod.settings?.description ?? "並ばずに事前注文できます。店頭のレジで注文番号を提示し、お支払いください。"
-        };
-      }
-      return { enabled: false, buttonText: "事前注文する(店頭決済)", description: "並ばずに事前注文できます。店頭のレジで注文番号を提示し、お支払いください。" };
-    } catch (e) {
-      return { enabled: false, buttonText: "事前注文する(店頭決済)", description: "並ばずに事前注文できます。店頭のレジで注文番号を提示し、お支払いください。" };
-    }
-  };
-
-  const preOrderSettings = getPreOrderModSettings();
-
   // 有効な外部モッドの一覧取得
   const getActiveMods = () => {
     if (!circleData || !circleData.mods) return [];
@@ -206,6 +176,17 @@ function MenuPageContent() {
       return Object.values(parsed.installed || {}).filter((m: any) => m.enabled);
     } catch (e) {
       return [];
+    }
+  };
+
+  const isPreOrderEnabled = () => {
+    if (!circleData || !circleData.mods) return false;
+    try {
+      const parsed = JSON.parse(circleData.mods);
+      const preOrderMod = parsed.installed?.["circle-pre-order-cod"];
+      return preOrderMod?.enabled ?? false;
+    } catch (e) {
+      return false;
     }
   };
 
@@ -219,174 +200,37 @@ function MenuPageContent() {
         addToCart,
         updateQuantity,
         clearCart: () => setCart([]),
-        submitOrder: () => {
-          if (preOrderSettings.enabled) {
-            directOrderMutation.mutate();
-          } else {
-            preOrderMutation.mutate();
-          }
-        },
       };
+      // 拡張機能がcart変化を確実に検知できるようイベントを発火
+      window.dispatchEvent(new CustomEvent("fesorder:update", {
+        detail: (window as any).FesOrder
+      }));
     }
-  }, [selectedCircleId, circleData, cart, preOrderSettings.enabled]);
+  }, [selectedCircleId, circleData, cart]);
 
-  // イベント選択画面
-  if (!selectedEventId && !selectedCircleId) {
+  // 直接アクセスの制限 (店頭QRコードスキャン必須化)
+  if (!circleIdParam && !selectedCircleId) {
     return (
-      <div className="max-w-6xl mx-auto p-sp-4 space-y-sp-5">
-        <div className="border-b-[3px] border-black pb-sp-3 mb-sp-5 flex justify-between items-end">
-          <div>
-            <h1 className="text-[48px] font-headline uppercase tracking-tight leading-[1.0]">
-              モバイルオーダー
-            </h1>
-            <p className="font-mono text-[14px] uppercase tracking-[1px] mt-sp-1">
-              イベントを選択してください
-            </p>
+      <div className="max-w-xl mx-auto p-sp-3 sm:p-sp-4 text-center font-mono my-12">
+        <div className="border-[5px] border-border p-sp-5 space-y-sp-4 bg-background">
+          <div className="inline-block bg-primary text-primary-foreground font-headline uppercase text-[10px] sm:text-[12px] tracking-[3px] px-sp-3 py-sp-2 border-[3px] border-primary">
+            ACCESS DENIED // 注文不可
           </div>
-          <Button
-            onClick={() => router.push("/my-order")}
-            className="border-[3px] border-border bg-background font-mono font-bold text-foreground rounded-none hover:bg-accent hover:text-accent-foreground uppercase tracking-wider transition-all"
-          >
-            マイQR / 注文履歴
-          </Button>
+          <h1 className="text-[24px] sm:text-[32px] font-headline uppercase tracking-tight leading-[1.1] text-foreground">
+            店頭のQRコードを<br />スキャンしてください
+          </h1>
+          <p className="text-[13px] sm:text-[14px] leading-[1.6] text-muted-foreground">
+            モバイルオーダーを開始するには、店頭に掲示されているサークル専用のQRコードをスマートフォンでスキャンしてください。
+          </p>
+          <div className="border-t-[3px] border-border pt-sp-4 flex flex-col gap-sp-2">
+            <Button
+              onClick={() => router.push("/my-order")}
+              className="w-full h-12 border-thick border-border bg-background text-foreground font-mono font-bold hover:bg-accent hover:text-accent-foreground"
+            >
+              注文履歴を確認する (マイQR)
+            </Button>
+          </div>
         </div>
-
-        {eventsLoading ? (
-          <div className="grid gap-sp-3 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-40" />
-            ))}
-          </div>
-        ) : events && events.length > 0 ? (
-          <div className="grid gap-sp-3 md:grid-cols-2 lg:grid-cols-3">
-            {events.map((event) => (
-              <Card
-                key={event.id}
-                className="cursor-pointer hover:bg-accent hover:text-accent-foreground group transition-all"
-                onClick={() => setSelectedEventId(event.id)}
-              >
-                <CardHeader>
-                  <CardTitle>{event.eventName}</CardTitle>
-                  {event.description && (
-                    <CardDescription className="group-hover:text-accent-foreground opacity-90">
-                      {event.description}
-                    </CardDescription>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className="text-[13px] font-mono">
-                    {event.startDate && (
-                      <p>
-                        {new Date(event.startDate).toLocaleDateString("ja-JP")}
-                        {event.endDate && (
-                          <> 〜 {new Date(event.endDate).toLocaleDateString("ja-JP")}</>
-                        )}
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="py-sp-7 text-center">
-              <p className="font-body text-[16px]">
-                現在公開中のイベントはありません
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    );
-  }
-
-  // サークル選択画面
-  if (selectedEventId && !selectedCircleId) {
-    const selectedEvent = events?.find((e) => e.id === selectedEventId);
-
-    return (
-      <div className="max-w-6xl mx-auto p-sp-4 space-y-sp-5">
-        <button
-          onClick={() => setSelectedEventId(null)}
-          className="font-mono text-[13px] uppercase tracking-[1px] underline hover:text-[#0000FF]"
-        >
-          ← イベント選択に戻る
-        </button>
-
-        <div className="border-b-[3px] border-black pb-sp-3 flex justify-between items-end">
-          <div>
-            <Badge variant="default" className="mb-sp-2">
-              {selectedEvent?.eventName}
-            </Badge>
-            <h1 className="text-[48px] font-headline uppercase tracking-tight leading-[1.0]">
-              出店一覧
-            </h1>
-            <p className="font-mono text-[14px] uppercase tracking-[1px] mt-sp-1">
-              注文したいお店を選んでください
-            </p>
-          </div>
-          <Button
-            onClick={() => router.push("/my-order")}
-            className="border-[3px] border-border bg-background font-mono font-bold text-foreground rounded-none hover:bg-accent hover:text-accent-foreground uppercase tracking-wider transition-all"
-          >
-            マイQR
-          </Button>
-        </div>
-
-        {circlesLoading ? (
-          <div className="grid gap-sp-3 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Skeleton key={i} className="h-40" />
-            ))}
-          </div>
-        ) : circles && circles.length > 0 ? (
-          <div className="grid gap-sp-3 md:grid-cols-2 lg:grid-cols-3">
-            {circles.map((circle) => (
-              <Card
-                key={circle.id}
-                className="cursor-pointer hover:bg-accent hover:text-accent-foreground group transition-all"
-                onClick={() => setSelectedCircleId(circle.id)}
-              >
-                <CardHeader>
-                  <div className="flex items-center gap-sp-3">
-                    {circle.iconImagePath ? (
-                      <Image
-                        src={circle.iconImagePath}
-                        alt={circle.name}
-                        width={48}
-                        height={48}
-                        className="border-[2px] border-black group-hover:border-white"
-                      />
-                    ) : (
-                      <div className="h-12 w-12 bg-[#F0F0F0] border-[2px] border-black group-hover:bg-white flex items-center justify-center">
-                        <span className="font-headline text-[18px] uppercase">
-                          {circle.name.charAt(0)}
-                        </span>
-                      </div>
-                    )}
-                    <div>
-                      <CardTitle>{circle.name}</CardTitle>
-                      {circle.description && (
-                        <CardDescription className="line-clamp-2 group-hover:text-white">
-                          {circle.description}
-                        </CardDescription>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="py-sp-7 text-center">
-              <p className="font-body text-[16px]">
-                このイベントにはまだ出店がありません
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </div>
     );
   }
@@ -406,7 +250,7 @@ function MenuPageContent() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-sp-4 space-y-sp-5 pb-32">
+    <div className="max-w-6xl mx-auto p-sp-3 sm:p-sp-4 space-y-sp-4 sm:space-y-sp-5 pb-36">
       {/* 戻るボタン */}
       <button
         onClick={() => {
@@ -415,7 +259,7 @@ function MenuPageContent() {
             setSelectedEventId(null);
           }
         }}
-        className="font-mono text-[13px] uppercase tracking-[1px] underline hover:text-[#0000FF]"
+        className="font-mono text-[12px] sm:text-[13px] uppercase tracking-[1px] underline hover:text-info"
       >
         ← 出店一覧に戻る
       </button>
@@ -423,7 +267,7 @@ function MenuPageContent() {
       {/* サークル情報ヘッダー */}
       {circleData && (
         <div
-          className="relative min-h-[200px] border-[5px] border-black bg-black text-white p-sp-5 flex flex-col justify-center items-center text-center"
+          className="relative min-h-[200px] border-heavy border-border bg-primary text-primary-foreground p-sp-5 flex flex-col justify-center items-center text-center"
           style={
             circleData.backgroundImagePath
               ? {
@@ -434,21 +278,21 @@ function MenuPageContent() {
               : undefined
           }
         >
-          <div className="bg-black/80 border-[3px] border-white p-sp-4 max-w-2xl w-full">
+          <div className="bg-primary/80 border-[3px] border-primary-foreground p-sp-3 sm:p-sp-4 max-w-2xl w-full">
             {circleData.iconImagePath && (
               <Image
                 src={circleData.iconImagePath}
                 alt={circleData.name}
-                width={80}
-                height={80}
+                width={64}
+                height={64}
                 className="mx-auto border-[2px] border-white mb-sp-3"
               />
             )}
-            <h1 className="text-[48px] font-headline uppercase tracking-tight mb-sp-1 leading-[1.0]">
+            <h1 className="text-[28px] sm:text-[40px] md:text-[48px] font-headline uppercase tracking-tight mb-sp-1 leading-[1.0]">
               {circleData.name}
             </h1>
             {circleData.description && (
-              <p className="text-[15px] font-mono leading-[1.5]">
+              <p className="text-[13px] sm:text-[15px] font-mono leading-[1.5]">
                 {circleData.description}
               </p>
             )}
@@ -458,16 +302,11 @@ function MenuPageContent() {
 
       {/* メニュー一覧 */}
       <div>
-        <h2 className="text-[32px] font-headline uppercase tracking-tight mb-sp-3 leading-[1.1]">
-          {preOrderSettings.enabled ? "メニューを選択して事前注文" : "メニュー一覧"}
+        <h2 className="text-[24px] sm:text-[32px] font-headline uppercase tracking-tight mb-sp-3 leading-[1.1]">
+          メニューを選択して事前注文
         </h2>
-        {!preOrderSettings.enabled && (
-          <div className="border-[3px] border-black bg-[#F0F0F0] p-4 mb-6 font-mono text-sm">
-            💡 このサークルは現在モバイルオーダー（事前注文）に対応していません。恐れ入りますが、店頭にお並びの上、ご注文ください。
-          </div>
-        )}
         {menus && menus.length > 0 ? (
-          <div className="grid gap-sp-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-sp-3 sm:grid-cols-2 lg:grid-cols-3">
             {menus.map((menu) => {
               const cartItem = cart.find((i) => i.menuId === menu.id);
               const qty = cartItem ? cartItem.quantity : 0;
@@ -475,7 +314,7 @@ function MenuPageContent() {
               return (
                 <Card key={menu.id} className={menu.soldOut ? "opacity-60" : ""}>
                   <CardHeader>
-                    <div className="relative h-48 w-full overflow-hidden border-b-[3px] border-black">
+                    <div className="relative h-48 w-full overflow-hidden border-b-thick border-border">
                       {menu.imagePath ? (
                         <Image
                           src={menu.imagePath}
@@ -484,15 +323,15 @@ function MenuPageContent() {
                           className="object-cover"
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-[#F0F0F0]">
+                        <div className="flex h-full w-full items-center justify-center bg-muted">
                           <span className="font-mono text-[14px] uppercase tracking-[1px]">
                             No Image
                           </span>
                         </div>
                       )}
                       {menu.soldOut && (
-                        <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
-                          <span className="text-white text-[24px] font-headline uppercase tracking-[2px]">
+                        <div className="absolute inset-0 bg-foreground/85 flex items-center justify-center">
+                          <span className="text-background text-[24px] font-headline uppercase tracking-[2px]">
                             売り切れ
                           </span>
                         </div>
@@ -511,44 +350,35 @@ function MenuPageContent() {
                     )}
                   </CardContent>
 
-                  <CardFooter className="border-t-[3px] border-black pt-4">
-                    {preOrderSettings.enabled ? (
-                      qty > 0 ? (
-                        <div className="flex items-center justify-between w-full bg-[#F0F0F0] border-[2px] border-black p-1">
-                          <Button
-                            type="button"
-                            onClick={() => updateQuantity(menu.id, -1)}
-                            className="h-10 w-10 border-[2px] border-border bg-background text-foreground rounded-none hover:bg-primary hover:text-primary-foreground transition-all"
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                          <span className="font-mono font-bold text-lg px-4">
-                            {qty}
-                          </span>
-                          <Button
-                            type="button"
-                            onClick={() => updateQuantity(menu.id, 1)}
-                            className="h-10 w-10 border-[2px] border-border bg-background text-foreground rounded-none hover:bg-primary hover:text-primary-foreground transition-all"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : (
+                  <CardFooter className="border-t-thick border-border pt-4">
+                    {qty > 0 ? (
+                      <div className="flex items-center justify-between w-full bg-muted border-[2px] border-border p-1">
                         <Button
-                          onClick={() => addToCart(menu.id, menu.name, menu.price)}
-                          disabled={menu.soldOut}
-                          className="w-full h-12 border-[3px] border-black bg-black font-mono text-base font-bold uppercase text-white rounded-none hover:bg-white hover:text-black transition-colors"
+                          type="button"
+                          onClick={() => updateQuantity(menu.id, -1)}
+                          className="h-10 w-10 border-[2px] border-border bg-background text-foreground rounded-none hover:bg-primary hover:text-primary-foreground transition-all"
                         >
-                          <ShoppingCart className="mr-2 h-5 w-5" />
-                          カートに追加
+                          <Minus className="h-4 w-4" />
                         </Button>
-                      )
+                        <span className="font-mono font-bold text-lg px-4">
+                          {qty}
+                        </span>
+                        <Button
+                          type="button"
+                          onClick={() => updateQuantity(menu.id, 1)}
+                          className="h-10 w-10 border-[2px] border-border bg-background text-foreground rounded-none hover:bg-primary hover:text-primary-foreground transition-all"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
                     ) : (
                       <Button
-                        disabled
-                        className="w-full h-12 border-[3px] border-gray-300 bg-gray-100 font-mono text-base font-bold uppercase text-gray-400 rounded-none cursor-not-allowed"
+                        onClick={() => addToCart(menu.id, menu.name, menu.price)}
+                        disabled={menu.soldOut}
+                        className="w-full h-12 border-thick border-border bg-primary font-mono text-base font-bold uppercase text-primary-foreground rounded-none hover:bg-background hover:text-foreground transition-colors"
                       >
-                        注文は店頭受付のみ
+                        <ShoppingCart className="mr-2 h-5 w-5" />
+                        カートに追加
                       </Button>
                     )}
                   </CardFooter>
@@ -563,75 +393,103 @@ function MenuPageContent() {
         )}
       </div>
 
-      {/* 固定事前オーダーカートバー */}
-      {cart.length > 0 && preOrderSettings.enabled && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-black text-white border-t-[5px] border-black p-4 backdrop-blur-md">
-          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="space-y-1">
+      {/* 標準カートバー */}
+      {cart.length > 0 && (
+        <div id="standard-cart-bar" className="fixed bottom-0 left-0 right-0 z-40 bg-primary text-primary-foreground border-t-heavy border-border p-3 sm:p-4">
+          <div className="max-w-4xl mx-auto flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="bg-white text-black px-2 py-0.5 font-mono text-xs font-bold uppercase tracking-widest">
-                  選択中 ({getTotalCount()}点)
+                <span className="bg-background text-foreground px-2 py-0.5 font-mono text-xs font-bold uppercase tracking-widest">
+                  {getTotalCount()}点
                 </span>
-                <span className="font-mono text-2xl font-black">
-                  合計: ¥{getTotalPrice().toLocaleString()}
+                <span className="font-mono text-xl sm:text-2xl font-black">
+                  ¥{getTotalPrice().toLocaleString()}
                 </span>
               </div>
-              <p className="text-xs text-gray-300 font-mono">
-                {preOrderSettings.description}
+              <p className="text-[10px] sm:text-xs text-primary-foreground/80 font-mono hidden sm:block">
+                事前に注文を予約し、レジでスムーズに会計できます。
               </p>
             </div>
             <Button
-              onClick={() => directOrderMutation.mutate()}
-              disabled={directOrderMutation.isPending}
-              className="w-full sm:w-auto h-14 border-[3px] border-white bg-white px-8 font-mono text-lg font-black uppercase text-black rounded-none hover:bg-[#008000] hover:text-white transition-all shadow-none active:translate-y-1"
+              onClick={() => setIsCartOpen(true)}
+              className="w-full h-14 border-thick border-border bg-background px-4 sm:px-8 font-mono text-base sm:text-lg font-black uppercase text-foreground rounded-none hover:bg-primary hover:text-primary-foreground transition-all shadow-none active:translate-y-1"
             >
-              <CheckCircle className="mr-2 h-6 w-6" />
-              {directOrderMutation.isPending
-                ? "送信中..."
-                : `【${preOrderSettings.buttonText}】`}
+              <ShoppingCart className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
+              注文を確認する
             </Button>
           </div>
         </div>
       )}
 
-      {/* モバイルオーダー直接注文 完了モーダル (RawBlock Brutalist UI) */}
-      {successOrderInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 font-mono">
-          <div className="w-full max-w-md border-[5px] border-black bg-white p-6 space-y-4">
-            <div className="border-b-[3px] border-black pb-3">
-              <h3 className="font-black text-2xl uppercase text-black">[注文を送信しました]</h3>
-            </div>
-            
-            <div className="bg-[#FFFF00] border-[3px] border-black p-4 text-center space-y-2">
-              <p className="text-xs uppercase font-mono tracking-widest text-black/70 font-bold">呼出注文番号</p>
-              <p className="text-3xl font-black text-black tracking-wider">{successOrderInfo.orderNumber}</p>
+      {/* 標準カート確認モーダル */}
+      {isCartOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/80 p-4 font-mono">
+          <div className="w-full max-w-lg border-heavy border-border bg-background p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="border-b-thick border-border pb-3 flex justify-between items-center">
+              <h3 className="font-black text-2xl uppercase text-foreground">[カートの中身を確認]</h3>
+              <Button
+                variant="ghost"
+                onClick={() => setIsCartOpen(false)}
+                className="font-bold border-[2px] border-border rounded-none hover:bg-primary hover:text-primary-foreground"
+              >
+                ✕ 閉じる
+              </Button>
             </div>
 
-            <div className="space-y-2 text-sm text-black">
-              <div className="flex justify-between font-bold border-b border-black/10 pb-1">
+            <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1">
+              {cart.map((item) => (
+                <div key={item.menuId} className="flex justify-between items-center border-b border-border/10 pb-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="font-bold text-sm text-foreground">{item.menuName}</p>
+                    <p className="text-xs text-muted-foreground">単価: ¥{item.menuPrice.toLocaleString()}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      type="button"
+                      onClick={() => updateQuantity(item.menuId, -1)}
+                      className="h-8 w-8 border-[2px] border-border bg-background text-foreground rounded-none hover:bg-primary hover:text-primary-foreground p-0"
+                    >
+                      <Minus className="h-3 w-3" />
+                    </Button>
+                    <span className="font-bold text-sm w-6 text-center">{item.quantity}</span>
+                    <Button
+                      type="button"
+                      onClick={() => updateQuantity(item.menuId, 1)}
+                      className="h-8 w-8 border-[2px] border-border bg-background text-foreground rounded-none hover:bg-primary hover:text-primary-foreground p-0"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t-thick border-border pt-3 space-y-2">
+              <div className="flex justify-between font-black text-lg text-foreground">
                 <span>合計金額:</span>
-                <span>¥{successOrderInfo.totalPrice.toLocaleString()}</span>
+                <span>¥{getTotalPrice().toLocaleString()}</span>
               </div>
-              <p className="text-xs text-gray-700 leading-relaxed font-bold">
-                ⚠️ 店頭レジにて上記の「注文番号」をスタッフに提示し、代金をお支払いください。お支払い完了後、調理を開始いたします。
+              <p className="text-[11px] text-muted-foreground leading-normal">
+                {isPreOrderEnabled() 
+                  ? "※「注文を送信する」を押すと注文が送信されます。番号が呼ばれたら受取口にてお支払いください。"
+                  : "※「注文を送信する」を押すと事前注文が送信されます。レジにてマイQRコード、または連携したリストバンドを提示してお支払いください。"}
               </p>
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
               <Button
                 onClick={() => {
-                  setSuccessOrderInfo(null);
-                  router.push("/my-order");
+                  setIsCartOpen(false);
+                  if (isPreOrderEnabled()) {
+                    codOrderMutation.mutate();
+                  } else {
+                    preOrderMutation.mutate();
+                  }
                 }}
-                className="w-full h-12 border-[3px] border-black bg-black text-white text-base font-bold uppercase rounded-none hover:bg-white hover:text-black transition-all"
+                disabled={preOrderMutation.isPending || codOrderMutation.isPending}
+                className="w-full h-12 border-thick border-border bg-primary text-primary-foreground text-base font-black uppercase rounded-none hover:bg-background hover:text-foreground transition-all"
               >
-                注文状況を確認する (履歴へ)
-              </Button>
-              <Button
-                onClick={() => setSuccessOrderInfo(null)}
-                className="w-full h-12 border-[3px] border-black bg-white text-black text-base font-bold uppercase rounded-none hover:bg-black hover:text-white transition-all"
-              >
-                メニューに戻る
+                {preOrderMutation.isPending || codOrderMutation.isPending ? "送信中..." : "注文を送信する"}
               </Button>
             </div>
           </div>
@@ -639,26 +497,92 @@ function MenuPageContent() {
       )}
 
       {/* 外部モッドの動的ヘッダーインジェクション */}
-      {getActiveMods().map((mod: any) => (
-        mod.manifest?.hooks?.menuHeader ? (
-          <div
-            key={`${mod.manifest.id}-header`}
-            style={{ display: "none" }}
-            dangerouslySetInnerHTML={{ __html: mod.manifest.hooks.menuHeader }}
-          />
-        ) : null
-      ))}
+      {getActiveMods().map((mod: any) => {
+        const hook = mod.manifest?.hooks?.menuHeader;
+        if (!hook) return null;
+
+        return (
+          <div key={`${mod.manifest.id}-header`} className="w-full">
+            <ModSandbox
+              modId={mod.manifest.id}
+              hookName="menuHeader"
+              html={typeof hook === "string" ? hook : undefined}
+              jsUrl={typeof hook === "object" ? hook.js : undefined}
+              cssUrl={typeof hook === "object" ? hook.css : undefined}
+              data={{
+                circleId: selectedCircleId,
+                circleData,
+                cart,
+                userId, // guest_user_idを引き渡し
+              }}
+              onAction={(actionType, payload) => {
+                if (actionType === "ADD_TO_CART") {
+                  addToCart(payload.menuId, payload.menuName, payload.menuPrice);
+                } else if (actionType === "UPDATE_QUANTITY") {
+                  updateQuantity(payload.menuId, payload.delta);
+                } else if (actionType === "CLEAR_CART") {
+                  setCart([]);
+                } else if (actionType === "SAVE_DIRECT_ORDER") {
+                  try {
+                    const stored = localStorage.getItem("fesorder_direct_orders");
+                    const directOrders = stored ? JSON.parse(stored) : [];
+                    directOrders.push(payload);
+                    localStorage.setItem("fesorder_direct_orders", JSON.stringify(directOrders));
+                  } catch (e) {
+                    console.error("Failed to save direct order:", e);
+                  }
+                } else if (actionType === "NAVIGATE" && typeof payload === "string") {
+                  router.push(payload as any);
+                }
+              }}
+            />
+          </div>
+        );
+      })}
 
       {/* 外部モッドの動的ボディ末尾インジェクション */}
-      {getActiveMods().map((mod: any) => (
-        mod.manifest?.hooks?.menuBodyBottom ? (
-          <div
-            key={`${mod.manifest.id}-body-bottom`}
-            style={{ display: "none" }}
-            dangerouslySetInnerHTML={{ __html: mod.manifest.hooks.menuBodyBottom }}
-          />
-        ) : null
-      ))}
+      {getActiveMods().map((mod: any) => {
+        const hook = mod.manifest?.hooks?.menuBodyBottom;
+        if (!hook) return null;
+
+        return (
+          <div key={`${mod.manifest.id}-body-bottom`} className="fixed bottom-0 left-0 right-0 z-40">
+            <ModSandbox
+              modId={mod.manifest.id}
+              hookName="menuBodyBottom"
+              html={typeof hook === "string" ? hook : undefined}
+              jsUrl={typeof hook === "object" ? hook.js : undefined}
+              cssUrl={typeof hook === "object" ? hook.css : undefined}
+              data={{
+                circleId: selectedCircleId,
+                circleData,
+                cart,
+                userId, // guest_user_idを引き渡し
+              }}
+              onAction={(actionType, payload) => {
+                if (actionType === "ADD_TO_CART") {
+                  addToCart(payload.menuId, payload.menuName, payload.menuPrice);
+                } else if (actionType === "UPDATE_QUANTITY") {
+                  updateQuantity(payload.menuId, payload.delta);
+                } else if (actionType === "CLEAR_CART") {
+                  setCart([]);
+                } else if (actionType === "SAVE_DIRECT_ORDER") {
+                  try {
+                    const stored = localStorage.getItem("fesorder_direct_orders");
+                    const directOrders = stored ? JSON.parse(stored) : [];
+                    directOrders.push(payload);
+                    localStorage.setItem("fesorder_direct_orders", JSON.stringify(directOrders));
+                  } catch (e) {
+                    console.error("Failed to save direct order:", e);
+                  }
+                } else if (actionType === "NAVIGATE" && typeof payload === "string") {
+                  router.push(payload as any);
+                }
+              }}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -10,10 +10,10 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
 			className={cn(
 				"flex w-full bg-input text-foreground border-border border-thick px-[12px] py-[10px] font-mono text-[15px] transition-all outline-none",
 				"placeholder:text-muted-foreground file:border-0 file:bg-transparent file:text-sm file:font-medium",
-				"hover:brightness-95",
+				"hover:bg-input-hover",
 				"focus-visible:border-heavy focus-visible:ring-0",
-				"aria-invalid:border-destructive aria-invalid:border-thick",
-				"disabled:pointer-events-none disabled:border-muted disabled:bg-muted",
+				"aria-invalid:border-error aria-invalid:border-thick",
+				"disabled:pointer-events-none disabled:border-border-disabled disabled:bg-input-disabled",
 				className,
 			)}
 			{...props}

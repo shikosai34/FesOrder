@@ -71,17 +71,10 @@ function DashboardContent() {
       permission: "circle:read" as const,
     },
     {
-      title: "テーマパック設定",
-      description: "ロゴ・カラー・フォントの動的カスタマイズ",
-      href: "/admin/theme",
-      index: "08",
-      permission: "event:write" as const,
-    },
-    {
       title: "拡張機能 (モッド)",
       description: "サークル専用の拡張機能の管理・有効化",
       href: "/dashboard/mods",
-      index: "09",
+      index: "08",
       permission: "circle:write" as const,
     },
   ];
@@ -90,7 +83,7 @@ function DashboardContent() {
 
   return (
     <div className="max-w-6xl mx-auto p-sp-4 space-y-sp-5">
-      <div className="flex items-end justify-between border-b-[3px] border-black pb-sp-3">
+      <div className="flex items-end justify-between border-b-thick border-border pb-sp-3">
         <div>
           <h1 className="text-[48px] font-headline uppercase tracking-tight leading-[1.0]">
             ダッシュボード
@@ -115,7 +108,7 @@ function DashboardContent() {
         {menuItems.map((item) => (
           <PermissionGuard key={item.href} permission={item.permission}>
             <Link href={item.href as any}>
-              <Card className="cursor-pointer hover:bg-black hover:text-white group h-full">
+              <Card className="cursor-pointer hover:bg-primary hover:text-primary-foreground group h-full">
                 <CardHeader>
                   <div className="flex items-center gap-sp-3">
                     <span className="font-mono text-[24px] font-bold leading-none">
@@ -125,7 +118,7 @@ function DashboardContent() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <CardDescription className="group-hover:text-white">
+                  <CardDescription className="group-hover:text-primary-foreground">
                     {item.description}
                   </CardDescription>
                 </CardContent>
@@ -162,18 +155,12 @@ function DashboardContent() {
             </Link>
             <PermissionGuard permission="circle:read">
               <Link href="/dashboard/qr">
-                <Button className="w-full bg-black text-white hover:bg-white hover:text-black font-bold">
+                <Button className="w-full bg-primary text-primary-foreground hover:bg-background hover:text-foreground font-bold">
                   モバイルオーダーQRを表示・印刷
                 </Button>
               </Link>
             </PermissionGuard>
-            <PermissionGuard permission="event:write">
-              <Link href="/admin/theme">
-                <Button className="w-full border-[2px] border-black bg-white text-black hover:bg-black hover:text-white font-bold">
-                  🎨 イベントテーマパックを設定
-                </Button>
-              </Link>
-            </PermissionGuard>
+
 
           </CardContent>
 

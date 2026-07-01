@@ -10,7 +10,7 @@ const badgeVariants = cva(
       variant: {
         filter: "bg-background text-foreground border-border text-[10px] px-[12px] py-[4px] hover:bg-primary hover:text-primary-foreground active:bg-primary active:text-primary-foreground",
         default: "bg-background text-foreground border-border text-[11px] font-semibold px-[10px] py-[2px]",
-        active: "bg-accent text-accent-foreground border-accent text-[11px] font-semibold px-[10px] py-[2px]",
+        active: "bg-background text-success border-success text-[11px] font-semibold px-[10px] py-[2px]",
         warning: "bg-background text-warning border-warning text-[11px] font-semibold px-[10px] py-[2px]",
         error: "bg-background text-error border-error text-[11px] font-semibold px-[10px] py-[2px]",
       },

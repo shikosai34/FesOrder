@@ -19,6 +19,7 @@ import {
   stampRoutes,
   wristbandRoutes,
   preOrderRoutes,
+  extensionRoutes,
 } from "./routes";
 
 
@@ -49,6 +50,7 @@ app.route("/api/memberships", membershipRoutes);
 app.route("/api/stamps", stampRoutes);
 app.route("/api/wristbands", wristbandRoutes);
 app.route("/api/pre-orders", preOrderRoutes);
+app.route("/api/extensions", extensionRoutes);
 
 
 // 画像・フォントファイルアップロードエンドポイント

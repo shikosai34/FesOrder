@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
+import Script from "next/script";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { preOrderApi, wristbandApi, orderApi } from "@/lib/api";
+import { preOrderApi, wristbandApi, orderApi, circleApi } from "@/lib/api";
+import { ModSandbox } from "@/components/ModSandbox";
 import { useGuestUser } from "@/hooks/useGuestUser";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -32,15 +33,8 @@ export default function MyOrderPage() {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [newWristbandId, setNewWristbandId] = useState("");
   const [origin, setOrigin] = useState("");
-  const [directOrders, setDirectOrders] = useState<Array<{
-    orderId: string;
-    orderNumber: string;
-    circleId: string;
-    circleName: string;
-    totalPrice: number;
-    createdAt: string;
-    status?: string;
-  }>>([]);
+  const [modHooks, setModHooks] = useState<{ id: string; hook: any }[]>([]);
+  const [directOrders, setDirectOrders] = useState<any[]>([]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -48,39 +42,75 @@ export default function MyOrderPage() {
     }
   }, []);
 
+  // 代引き注文のロードとポーリング
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      let intervalId: any;
-      const loadAndFetch = () => {
-        const stored = localStorage.getItem("fesorder_direct_orders");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setDirectOrders(parsed);
-          
-          const fetchStatuses = async () => {
-            const updated = await Promise.all(
-              parsed.map(async (o: any) => {
-                try {
-                  const detail = await orderApi.get(o.orderId);
-                  return { ...o, status: detail.status };
-                } catch (err) {
-                  return o;
-                }
-              })
-            );
-            setDirectOrders(updated);
-            localStorage.setItem("fesorder_direct_orders", JSON.stringify(updated));
-          };
-          fetchStatuses();
-        }
-      };
+    const fetchLatestStatuses = async () => {
+      const stored = localStorage.getItem("fesorder_direct_orders");
+      if (!stored) return;
+      try {
+        const orders = JSON.parse(stored);
+        if (!orders.length) return;
 
-      loadAndFetch();
-      // 10秒おきにステータスをポーリング
-      intervalId = setInterval(loadAndFetch, 10000);
-      return () => clearInterval(intervalId);
-    }
+        // 初期状態で即セット
+        setDirectOrders((prev) => (prev.length === 0 ? orders : prev));
+
+        const updated = await Promise.all(
+          orders.map(async (o: any) => {
+            try {
+              const res = await fetch(`/api/orders/${o.orderId}`);
+              if (!res.ok) return o;
+              const data = await res.json();
+              return { ...o, status: data.status };
+            } catch {
+              return o;
+            }
+          })
+        );
+        localStorage.setItem("fesorder_direct_orders", JSON.stringify(updated));
+        setDirectOrders(updated);
+      } catch (err) {
+        console.error("Failed to sync direct orders status:", err);
+      }
+    };
+
+    fetchLatestStatuses();
+    const intervalId = setInterval(fetchLatestStatuses, 10000);
+    return () => clearInterval(intervalId);
   }, []);
+
+  useEffect(() => {
+    const loadModHooks = async () => {
+      try {
+        const stored = localStorage.getItem("fesorder_direct_orders");
+        const parsed = stored ? JSON.parse(stored) : [];
+        const circleIds = Array.from(new Set(parsed.map((o: any) => o.circleId))) as string[];
+        
+        const hooks: { id: string; hook: any }[] = [];
+        for (const cid of circleIds) {
+          try {
+            const circleData = await circleApi.get(cid);
+            if (circleData && circleData.mods) {
+              const modsPayload = JSON.parse(circleData.mods);
+              Object.values(modsPayload.installed || {}).forEach((m: any) => {
+                if (m.enabled && m.manifest.hooks?.myOrderBodyBottom) {
+                  hooks.push({
+                    id: m.manifest.id,
+                    hook: m.manifest.hooks.myOrderBodyBottom,
+                  });
+                }
+              });
+            }
+          } catch (e) {
+            // Ignore individual fetch errors
+          }
+        }
+        setModHooks(hooks);
+      } catch (err) {
+        console.error("Failed to load mod hooks:", err);
+      }
+    };
+    loadModHooks();
+  }, [directOrders.length]);
 
   const userId = isAuthenticated && authUserId ? authUserId : guestUserId;
 
@@ -161,18 +191,18 @@ export default function MyOrderPage() {
   )}`;
 
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-6 pb-24 font-mono">
+    <div className="max-w-3xl mx-auto p-3 sm:p-4 space-y-4 sm:space-y-6 pb-24 font-mono">
       <button
         onClick={() => router.push("/menu")}
-        className="text-xs uppercase tracking-widest underline hover:text-[#0000FF] flex items-center gap-1"
+        className="text-xs uppercase tracking-widest underline hover:text-info flex items-center gap-1"
       >
         <ArrowLeft className="h-4 w-4" />
         メニュー選択に戻る
       </button>
 
-      <div className="border-b-[3px] border-black pb-4">
-        <h1 className="text-3xl font-black uppercase tracking-tight">
-          [マイデジタルQR & 注文履歴]
+      <div className="border-b-thick border-border pb-4">
+        <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">
+          [マイデジタルQR &amp; 注文履歴]
         </h1>
         <p className="text-xs uppercase tracking-widest text-gray-600 mt-1">
           店頭でこちらのQRまたはリストバンドをお見せください
@@ -180,24 +210,24 @@ export default function MyOrderPage() {
       </div>
 
       {/* リストバンド紛失・連携状態ステータスバー */}
-      <div className="border-[3px] border-black bg-[#F0F0F0] p-4 space-y-3">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-          <div className="flex items-center gap-2">
+      <div className="border-thick border-border bg-muted p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-bold text-sm">【リストバンド連携状態】:</span>
             {activeWristband ? (
-              <span className="bg-[#008000] text-white px-2 py-0.5 text-xs font-black uppercase">
+              <span className="bg-success text-primary-foreground px-2 py-0.5 text-xs font-black uppercase">
                 紐付け完了 ({activeWristband.id})
               </span>
             ) : (
-              <span className="bg-black text-white px-2 py-0.5 text-xs font-black uppercase">
+              <span className="bg-primary text-primary-foreground px-2 py-0.5 text-xs font-black uppercase">
                 未紐付け / スマホ運用中
               </span>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               onClick={() => setIsRegisterOpen(true)}
-              className="h-9 border-[2px] border-black bg-white text-black text-xs font-bold uppercase rounded-none hover:bg-black hover:text-white"
+              className="h-9 border-[2px] border-border bg-background text-foreground text-xs font-bold uppercase rounded-none hover:bg-primary hover:text-primary-foreground"
             >
               <LinkIcon className="mr-1 h-3.5 w-3.5" />
               {activeWristband ? "再発行・付け替え" : "バンドを登録"}
@@ -210,7 +240,7 @@ export default function MyOrderPage() {
                   }
                 }}
                 disabled={reportLostMutation.isPending}
-                className="h-9 border-[2px] border-black bg-[#FF0000] text-white text-xs font-bold uppercase rounded-none hover:bg-black"
+                className="h-9 border-[2px] border-border bg-error text-primary-foreground text-xs font-bold uppercase rounded-none hover:bg-primary"
               >
                 <ShieldAlert className="mr-1 h-3.5 w-3.5" />
                 紛失報告 (ロック)
@@ -220,8 +250,8 @@ export default function MyOrderPage() {
         </div>
 
         {!activeWristband && (
-          <div className="bg-white border-[2px] border-black p-3 text-xs flex items-start gap-2">
-            <AlertTriangle className="h-5 w-5 text-black shrink-0 mt-0.5" />
+          <div className="bg-background border-[2px] border-border p-3 text-xs flex items-start gap-2">
+            <AlertTriangle className="h-5 w-5 text-foreground shrink-0 mt-0.5" />
             <div>
               <span className="font-bold">💡 スマホのままで大丈夫です！</span>
               <p className="text-gray-600 mt-0.5">
@@ -234,13 +264,13 @@ export default function MyOrderPage() {
 
       {/* リストバンド紐付けモーダル */}
       {isRegisterOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-md border-[5px] border-black bg-white p-6 space-y-4">
-            <div className="flex justify-between items-center border-b-[3px] border-black pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/80 p-4">
+          <div className="w-full max-w-md border-heavy border-border bg-background p-6 space-y-4">
+            <div className="flex justify-between items-center border-b-thick border-border pb-3">
               <h3 className="font-black text-lg uppercase">[リストバンド紐付け]</h3>
               <button
                 onClick={() => setIsRegisterOpen(false)}
-                className="border-[2px] border-black p-1 hover:bg-black hover:text-white"
+                className="border-[2px] border-border p-1 hover:bg-primary hover:text-primary-foreground"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -251,7 +281,7 @@ export default function MyOrderPage() {
             <Input
               type="text"
               placeholder="リストバンドIDを入力 (例: wb_12345)"
-              className="h-12 border-[3px] border-black text-base rounded-none"
+              className="h-12 border-thick border-border text-base rounded-none"
               value={newWristbandId}
               onChange={(e) => setNewWristbandId(e.target.value)}
             />
@@ -262,7 +292,7 @@ export default function MyOrderPage() {
                 }
               }}
               disabled={registerMutation.isPending || !newWristbandId.trim()}
-              className="w-full h-12 border-[3px] border-black bg-black text-white text-base font-bold uppercase rounded-none hover:bg-white hover:text-black"
+              className="w-full h-12 border-thick border-border bg-primary text-primary-foreground text-base font-bold uppercase rounded-none hover:bg-background hover:text-foreground"
             >
               紐付けを完了する
             </Button>
@@ -271,106 +301,51 @@ export default function MyOrderPage() {
       )}
 
       {/* デジタルQRカード */}
-      <Card className="border-[5px] border-black bg-black text-white rounded-none p-6 text-center shadow-none">
+      <Card className="border-heavy border-border bg-primary text-primary-foreground rounded-none p-4 sm:p-6 text-center shadow-none">
         <CardHeader className="p-0 mb-4">
-          <div className="inline-block bg-white text-black px-3 py-1 text-xs font-black uppercase tracking-widest mx-auto">
+          <div className="inline-block bg-background text-foreground px-3 py-1 text-xs font-black uppercase tracking-widest mx-auto">
             MEMBER DIGITAL QR
           </div>
         </CardHeader>
         <CardContent className="p-0 space-y-4">
-          <div className="bg-white p-4 inline-block border-[3px] border-white mx-auto">
+          <div className="bg-background p-3 sm:p-4 inline-block border-[3px] border-background mx-auto">
             <img
               src={qrImageUrl}
               alt="My Digital QR"
-              width={220}
-              height={220}
+              width={180}
+              height={180}
               className="mx-auto block"
             />
           </div>
           <div className="space-y-1">
             <p className="text-xs text-gray-400 uppercase tracking-widest">
-              USER ID (呼出ID: #{userStatus?.user.displayId || "---"})
+              USER ID (呼出しID: #{userStatus?.user.displayId || "---"})
             </p>
-            <p className="text-xl font-bold tracking-wider break-all">{userId}</p>
+            <p className="text-base sm:text-xl font-bold tracking-wider break-all px-2">{userId}</p>
           </div>
         </CardContent>
       </Card>
 
-      {/* モバイルオーダー（店頭支払い）履歴 */}
-      {directOrders.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-2xl font-black uppercase border-b-[3px] border-black pb-2">
-            [モバイルオーダー (店頭払い) 追跡]
-          </h2>
-          <div className="space-y-4">
-            {directOrders.map((doOrder) => (
-              <div
-                key={doOrder.orderId}
-                className="border-[4px] border-black bg-white p-5 space-y-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-              >
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b-[2px] border-black pb-2 gap-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {doOrder.status === "pending" && (
-                      <span className="bg-[#FFFF00] text-black border-[1.5px] border-black px-2 py-0.5 text-xs font-black uppercase flex items-center gap-1 font-bold">
-                        <Clock className="h-3.5 w-3.5" /> 店頭レジ未払い
-                      </span>
-                    )}
-                    {doOrder.status === "preparing" && (
-                      <span className="bg-[#0000FF] text-white px-2 py-0.5 text-xs font-black uppercase flex items-center gap-1 font-bold animate-pulse">
-                        <Clock className="h-3.5 w-3.5" /> 厨房で調理中
-                      </span>
-                    )}
-                    {(doOrder.status === "ready" || doOrder.status === "completed") && (
-                      <span className="bg-[#008000] text-white px-2 py-0.5 text-xs font-black uppercase flex items-center gap-1 font-bold">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> 受け取り可能！
-                      </span>
-                    )}
-                    {doOrder.status === "cancelled" && (
-                      <span className="bg-[#FF0000] text-white px-2 py-0.5 text-xs font-black uppercase flex items-center gap-1 font-bold">
-                        キャンセル
-                      </span>
-                    )}
-                    <span className="text-xs text-gray-500 font-bold">
-                      {doOrder.circleName} ({new Date(doOrder.createdAt).toLocaleTimeString("ja-JP")})
-                    </span>
-                  </div>
-                  <span className="text-xl font-black">
-                    ¥{doOrder.totalPrice.toLocaleString()}
-                  </span>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <div className="bg-[#F0F0F0] p-3 border-[2px] border-black flex justify-between items-center">
-                    <div>
-                      <p className="text-xs text-gray-600 uppercase font-bold">呼出注文番号</p>
-                      <p className="text-2xl font-black text-black tracking-wider">{doOrder.orderNumber}</p>
-                    </div>
-                    {doOrder.status === "pending" && (
-                      <p className="text-xs text-right text-black font-bold leading-normal max-w-[200px]">
-                        ⚠️ レジでこの番号をスタッフに見せて代金を支払うと、調理が始まります。
-                      </p>
-                    )}
-                    {doOrder.status === "preparing" && (
-                      <p className="text-xs text-right text-blue-800 font-bold leading-normal max-w-[200px]">
-                        ただいま調理中です。もうしばらくお待ちください。
-                      </p>
-                    )}
-                    {(doOrder.status === "ready" || doOrder.status === "completed") && (
-                      <p className="text-xs text-right text-green-800 font-bold leading-normal max-w-[200px]">
-                        完成しました！受取口で注文番号を提示して商品をお受け取りください。
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+      {/* 外部モッドの動的インジェクション (マイオーダー画面用) */}
+      {modHooks.map((m) => {
+        const { id, hook } = m;
+        return (
+          <div key={`${id}-body-bottom`} className="w-full">
+            <ModSandbox
+              modId={id}
+              hookName="myOrderBodyBottom"
+              html={typeof hook === "string" ? hook : undefined}
+              jsUrl={typeof hook === "object" ? hook.js : undefined}
+              cssUrl={typeof hook === "object" ? hook.css : undefined}
+              data={directOrders}
+            />
           </div>
-        </div>
-      )}
+        );
+      })}
 
       {/* 事前オーダー履歴一覧 */}
       <div className="space-y-4">
-        <h2 className="text-2xl font-black uppercase border-b-[3px] border-black pb-2">
+        <h2 className="text-2xl font-black uppercase border-b-thick border-border pb-2">
           [事前オーダー状況]
         </h2>
 
@@ -379,16 +354,16 @@ export default function MyOrderPage() {
             {preOrders.map((po) => (
               <div
                 key={po.id}
-                className="border-[4px] border-black bg-white p-5 space-y-3"
+                className="border-thick border-border bg-background p-5 space-y-3"
               >
-                <div className="flex justify-between items-start border-b-[2px] border-black pb-2">
+                <div className="flex justify-between items-start border-b-[2px] border-border pb-2">
                   <div className="flex items-center gap-2">
                     {po.status === "pending" ? (
-                      <span className="bg-[#FFA500] text-black border-[1.5px] border-black px-2 py-0.5 text-xs font-black uppercase flex items-center gap-1">
+                      <span className="bg-warning text-foreground border-[1.5px] border-border px-2 py-0.5 text-xs font-black uppercase flex items-center gap-1">
                         <Clock className="h-3.5 w-3.5" /> 店頭未受取
                       </span>
                     ) : (
-                      <span className="bg-[#008000] text-white px-2 py-0.5 text-xs font-black uppercase flex items-center gap-1">
+                      <span className="bg-success text-primary-foreground px-2 py-0.5 text-xs font-black uppercase flex items-center gap-1">
                         <CheckCircle2 className="h-3.5 w-3.5" /> 受取完了
                       </span>
                     )}
@@ -401,8 +376,8 @@ export default function MyOrderPage() {
                   </span>
                 </div>
 
-                <div className="bg-[#F0F0F0] p-3 border-[2px] border-black">
-                  <ul className="divide-y divide-black/10 text-sm">
+                <div className="bg-muted p-3 border-[2px] border-border">
+                  <ul className="divide-y divide-border/10 text-sm">
                     {po.items.map((item) => (
                       <li key={item.id} className="py-1 flex justify-between">
                         <span className="font-bold">{item.menu?.name || "メニュー"}</span>
@@ -415,7 +390,7 @@ export default function MyOrderPage() {
             ))}
           </div>
         ) : (
-          <div className="border-[3px] border-dashed border-black p-8 text-center text-gray-500">
+          <div className="border-thick border-dashed border-border p-8 text-center text-muted-foreground">
             現在、未処理の事前オーダーはありません。
           </div>
         )}

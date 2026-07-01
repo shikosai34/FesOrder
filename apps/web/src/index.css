@@ -18,10 +18,11 @@
   --spacing-sp-7: 80px;
   --spacing-sp-8: 120px;
 
-  --color-success: #008000;
-  --color-warning: #FFA500;
-  --color-error: #FF0000;
-  --color-info: #0000FF;
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-info: var(--info);
+  --color-blue: var(--blue);
 }
 
 :root {
@@ -45,6 +46,20 @@
   --border: #000000;
   --input: #F0F0F0;
   --ring: #000000;
+
+  /* RawBlock system colors */
+  --success: #008000;
+  --warning: #FFA500;
+  --error: #FF0000;
+  --info: #0000FF;
+  --blue: #0000FF;
+  --black: #000000;
+  --white: #FFFFFF;
+
+  /* Custom input and disabled states */
+  --input-hover: #E8E8E8;
+  --input-disabled: #F5F5F5;
+  --border-disabled: #CCCCCC;
 }
 
 .dark {
@@ -67,6 +82,20 @@
   --border: #FFFFFF;
   --input: #111111;
   --ring: #FFFFFF;
+
+  /* RawBlock system colors for dark mode */
+  --success: #008000;
+  --warning: #FFA500;
+  --error: #FF0000;
+  --info: #0000FF;
+  --blue: #0000FF;
+  --black: #000000;
+  --white: #FFFFFF;
+
+  /* Custom input and disabled states for dark mode */
+  --input-hover: #222222;
+  --input-disabled: #151515;
+  --border-disabled: #444444;
 }
 
 @theme inline {
@@ -93,6 +122,16 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-info: var(--info);
+  --color-blue: var(--blue);
+  --color-black: var(--black);
+  --color-white: var(--white);
+  --color-input-hover: var(--input-hover);
+  --color-input-disabled: var(--input-disabled);
+  --color-border-disabled: var(--border-disabled);
 }
 
 @layer base {

@@ -93,10 +93,10 @@ export function QrScannerModal({
     onSuccess: (data) => {
       toast.success(`受取確定！ 注文番号: ${data.orderNumber}`, {
         style: {
-          border: "3px solid #000",
-          borderRadius: "0px",
-          background: "#000",
-          color: "#fff",
+          border: "3px solid var(--border)",
+          borderRadius: "var(--radius)",
+          background: "var(--primary)",
+          color: "var(--primary-foreground)",
           fontWeight: "bold",
         },
       });
@@ -119,13 +119,13 @@ export function QrScannerModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/80 p-4 backdrop-blur-sm">
       {/* RawBlock モーダルコンテナ */}
-      <div className="relative w-full max-w-2xl border-[5px] border-black bg-white p-4 sm:p-6 shadow-none">
+      <div className="relative w-full max-w-2xl border-heavy border-border bg-background p-4 sm:p-6 shadow-none">
         {/* ヘッダー */}
-        <div className="mb-4 sm:mb-6 flex items-center justify-between border-b-[3px] border-black pb-4">
+        <div className="mb-4 sm:mb-6 flex items-center justify-between border-b-thick border-border pb-4">
           <div className="flex items-center space-x-2 sm:space-x-3">
-            <div className="bg-black p-2 text-white">
+            <div className="bg-primary p-2 text-primary-foreground">
               <QrCode className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <h2 className="font-mono text-lg sm:text-2xl font-black uppercase tracking-wider">
@@ -134,7 +134,7 @@ export function QrScannerModal({
           </div>
           <button
             onClick={onClose}
-            className="border-[3px] border-black bg-white p-1 hover:bg-black hover:text-white transition-colors"
+            className="border-thick border-border bg-background p-1 hover:bg-primary hover:text-primary-foreground transition-colors"
           >
             <X className="h-6 w-6" />
           </button>
@@ -152,7 +152,7 @@ export function QrScannerModal({
                 ref={inputRef}
                 type="text"
                 placeholder="リストバンドQRをスキャン / コード入力..."
-                className="h-14 w-full border-[3px] border-black bg-[#F0F0F0] font-mono text-sm sm:text-lg rounded-none focus-visible:border-[5px] focus-visible:ring-0"
+                className="h-14 w-full border-thick border-border bg-input font-mono text-sm sm:text-lg rounded-none focus-visible:border-heavy focus-visible:ring-0"
                 value={scannedCode}
                 onChange={(e) => setScannedCode(e.target.value)}
               />
@@ -161,7 +161,7 @@ export function QrScannerModal({
               <Button
                 type="submit"
                 disabled={searchMutation.isPending}
-                className="flex-1 sm:flex-none h-14 border-[3px] border-black bg-black px-6 font-mono text-base font-bold uppercase text-white rounded-none hover:bg-white hover:text-black"
+                className="flex-1 sm:flex-none h-14 border-thick border-border bg-primary px-6 font-mono text-base font-bold uppercase text-primary-foreground rounded-none hover:bg-background hover:text-foreground"
               >
                 <Search className="mr-2 h-5 w-5" />
                 照会
@@ -169,7 +169,7 @@ export function QrScannerModal({
               <Button
                 type="button"
                 onClick={isCameraActive ? stopCamera : startCamera}
-                className="h-14 border-[3px] border-black bg-white px-4 text-black rounded-none hover:bg-black hover:text-white"
+                className="h-14 border-thick border-border bg-background px-4 text-foreground rounded-none hover:bg-primary hover:text-primary-foreground"
               >
                 <Camera className="h-5 w-5" />
               </Button>
@@ -178,7 +178,7 @@ export function QrScannerModal({
 
           {/* カメラプレビュー */}
           {isCameraActive && (
-            <div className="relative h-48 w-full overflow-hidden border-[3px] border-black bg-black">
+            <div className="relative h-48 w-full overflow-hidden border-thick border-border bg-primary">
               <video
                 ref={videoRef}
                 className="h-full w-full object-cover"
@@ -200,7 +200,7 @@ export function QrScannerModal({
           )}
 
           {!searchMutation.isPending && preOrders.length === 0 && (
-            <div className="border-[3px] border-dashed border-black p-8 text-center font-mono text-gray-500">
+            <div className="border-thick border-dashed border-border p-8 text-center font-mono text-muted-foreground">
               リストバンドQRコードをスキャンするか、IDを入力して「照会」を押してください。
             </div>
           )}
@@ -208,11 +208,11 @@ export function QrScannerModal({
           {preOrders.map((po) => (
             <div
               key={po.id}
-              className="border-[4px] border-black bg-white p-4 sm:p-5 space-y-4"
+              className="border-thick border-border bg-background p-4 sm:p-5 space-y-4"
             >
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b-[2px] border-black pb-3 gap-2 sm:gap-0">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b-[2px] border-border pb-3 gap-2 sm:gap-0">
                 <div>
-                  <span className="bg-black text-white px-2 py-1 font-mono text-xs font-bold uppercase tracking-widest">
+                  <span className="bg-primary text-primary-foreground px-2 py-1 font-mono text-xs font-bold uppercase tracking-widest">
                     事前オーダー
                   </span>
                   <p className="font-mono text-xs text-gray-600 mt-1 sm:mt-2">
@@ -227,11 +227,11 @@ export function QrScannerModal({
               </div>
 
               {/* 注文アイテム明細 */}
-              <div className="space-y-2 bg-[#F0F0F0] p-3 border-[2px] border-black">
+              <div className="space-y-2 bg-muted p-3 border-[2px] border-border">
                 <p className="font-mono text-xs font-bold uppercase tracking-wider">
                   [注文内容]
                 </p>
-                <ul className="divide-y divide-black/20 font-mono text-sm">
+                <ul className="divide-y divide-border/20 font-mono text-sm">
                   {po.items.map((item) => (
                     <li key={item.id} className="py-1.5 flex justify-between">
                       <span className="font-bold">{item.menu?.name || "メニュー"}</span>
@@ -245,7 +245,7 @@ export function QrScannerModal({
               <Button
                 onClick={() => claimMutation.mutate(po.id)}
                 disabled={claimMutation.isPending}
-                className="w-full h-12 sm:h-14 border-[3px] border-black bg-black font-mono text-base sm:text-lg font-black uppercase text-white rounded-none hover:bg-[#008000] hover:text-white transition-all shadow-none active:translate-y-1"
+                className="w-full h-12 sm:h-14 border-thick border-border bg-primary font-mono text-base sm:text-lg font-black uppercase text-primary-foreground rounded-none hover:bg-success hover:text-primary-foreground transition-all shadow-none active:translate-y-1"
               >
                 <CheckCircle2 className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
                 {claimMutation.isPending ? "処理中..." : "【受取確定＆調理開始】"}
